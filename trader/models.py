@@ -1,4 +1,4 @@
-from sqlmodel import SQLModel, Field, create_engine
+from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime
 from trader.client import OrderSide, OrderType, Symbol
@@ -17,12 +17,4 @@ class Order(SQLModel, table=True):
     sell_orders_placed: bool = Field(default=False)
     stop_price: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-# Create SQLite database engine
-DATABASE_URL = "sqlite:///orders.db"
-engine = create_engine(DATABASE_URL)
-
-# Create all tables
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine) 
+    updated_at: datetime = Field(default_factory=datetime.utcnow) 

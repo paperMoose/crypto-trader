@@ -1,10 +1,10 @@
 import logging
 from trader.client import GeminiClient, Symbol, OrderSide, OrderType
-from trader.models import create_db_and_tables
 from trader.database import (
     get_open_buy_orders,
     save_order,
-    update_order
+    update_order,
+    init_db
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
@@ -25,8 +25,8 @@ def check_order_status(order_id):
     return client.check_order_status(order_id)
 
 def main():
-    # Ensure database and tables exist
-    create_db_and_tables()
+    # Update this line to use the new init_db function
+    init_db()
     
     logging.info("Monitoring orders...")
     

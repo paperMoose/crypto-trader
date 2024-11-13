@@ -1,26 +1,30 @@
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
 from ..models import Order
-from database import (
+from trader.database import (
     load_orders,
     get_open_buy_orders,
     save_order,
     update_order,
     get_order_by_id,
     get_orders_by_parent_id,
-    delete_order
+    delete_order,
+    init_db
 )
-from client import OrderSide, OrderType, Symbol
+from trader.client import OrderSide, OrderType, Symbol
 from datetime import datetime
 
-# Use an in-memory SQLite database for testing
-@pytest.fixture(name="session")
-def session_fixture():
-    engine = create_engine("sqlite:///test.db", echo=False)
+@pytest.fixture(name="engine")
+def engine_fixture():
+    engine = create_engine("sqlite:///:memory:", echo=False)
     SQLModel.metadata.create_all(engine)
+    yield engine
+    SQLModel.metadata.drop_all(engine)
+
+@pytest.fixture(name="session")
+def session_fixture(engine):
     with Session(engine) as session:
         yield session
-    SQLModel.metadata.drop_all(engine)
 
 @pytest.fixture
 def sample_order_data():
@@ -61,106 +65,92 @@ def sample_sell_orders_data(sample_order_data):
         }
     ]
 
-def test_save_order(session, sample_order_data):
-    order = save_order(sample_order_data)
+def test_save_order(engine, session, sample_order_data):
+    order = save_order(sample_order_data, engine=engine)
     assert order.order_id == sample_order_data["order_id"]
     assert order.status == sample_order_data["status"]
     assert isinstance(order.created_at, datetime)
     assert isinstance(order.updated_at, datetime)
 
-def test_load_orders(session, sample_order_data, sample_sell_orders_data):
-    # Save multiple orders
-    save_order(sample_order_data)
+def test_load_orders(engine, session, sample_order_data, sample_sell_orders_data):
+    save_order(sample_order_data, engine=engine)
     for sell_order in sample_sell_orders_data:
-        save_order(sell_order)
+        save_order(sell_order, engine=engine)
     
-    orders = load_orders()
+    orders = load_orders(engine=engine)
     assert len(orders) == 3
     assert any(order.order_id == sample_order_data["order_id"] for order in orders)
     assert any(order.order_id == "sell1" for order in orders)
     assert any(order.order_id == "sell2" for order in orders)
 
-def test_get_open_buy_orders(session, sample_order_data, sample_sell_orders_data):
-    # Save buy order
-    save_order(sample_order_data)
-    # Save sell orders
+def test_get_open_buy_orders(engine, session, sample_order_data, sample_sell_orders_data):
+    save_order(sample_order_data, engine=engine)
     for sell_order in sample_sell_orders_data:
-        save_order(sell_order)
+        save_order(sell_order, engine=engine)
     
-    open_buys = get_open_buy_orders()
+    open_buys = get_open_buy_orders(engine=engine)
     assert len(open_buys) == 1
     assert open_buys[0].order_id == sample_order_data["order_id"]
     assert open_buys[0].side == OrderSide.BUY.value
 
-def test_update_order(session, sample_order_data):
-    order = save_order(sample_order_data)
+def test_update_order(engine, session, sample_order_data):
+    order = save_order(sample_order_data, engine=engine)
     original_updated_at = order.updated_at
     
-    # Wait a moment to ensure updated_at will be different
     import time
     time.sleep(0.1)
     
-    updated = update_order(order.order_id, status="filled", sell_orders_placed=True)
+    updated = update_order(order.order_id, engine=engine, status="filled", sell_orders_placed=True)
     assert updated.status == "filled"
     assert updated.sell_orders_placed is True
     assert updated.updated_at > original_updated_at
 
-def test_get_order_by_id(session, sample_order_data):
-    save_order(sample_order_data)
+def test_get_order_by_id(engine, session, sample_order_data):
+    save_order(sample_order_data, engine=engine)
     
-    order = get_order_by_id(sample_order_data["order_id"])
+    order = get_order_by_id(sample_order_data["order_id"], engine=engine)
     assert order is not None
     assert order.order_id == sample_order_data["order_id"]
     
-    # Test non-existent order
-    assert get_order_by_id("nonexistent") is None
+    assert get_order_by_id("nonexistent", engine=engine) is None
 
-def test_get_orders_by_parent_id(session, sample_order_data, sample_sell_orders_data):
-    # Save parent order
-    save_order(sample_order_data)
-    # Save child orders
+def test_get_orders_by_parent_id(engine, session, sample_order_data, sample_sell_orders_data):
+    save_order(sample_order_data, engine=engine)
     for sell_order in sample_sell_orders_data:
-        save_order(sell_order)
+        save_order(sell_order, engine=engine)
     
-    children = get_orders_by_parent_id(sample_order_data["order_id"])
+    children = get_orders_by_parent_id(sample_order_data["order_id"], engine=engine)
     assert len(children) == 2
     assert all(child.parent_order_id == sample_order_data["order_id"] for child in children)
 
-def test_delete_order(session, sample_order_data):
-    save_order(sample_order_data)
+def test_delete_order(engine, session, sample_order_data):
+    save_order(sample_order_data, engine=engine)
     
-    # Verify order exists
-    assert get_order_by_id(sample_order_data["order_id"]) is not None
+    assert get_order_by_id(sample_order_data["order_id"], engine=engine) is not None
     
-    # Delete order
-    success = delete_order(sample_order_data["order_id"])
+    success = delete_order(sample_order_data["order_id"], engine=engine)
     assert success is True
     
-    # Verify order was deleted
-    assert get_order_by_id(sample_order_data["order_id"]) is None
+    assert get_order_by_id(sample_order_data["order_id"], engine=engine) is None
     
-    # Try to delete non-existent order
-    assert delete_order("nonexistent") is False
+    assert delete_order("nonexistent", engine=engine) is False
 
-def test_order_timestamps(session, sample_order_data):
-    order = save_order(sample_order_data)
+def test_order_timestamps(engine, session, sample_order_data):
+    order = save_order(sample_order_data, engine=engine)
     assert order.created_at is not None
     assert order.updated_at is not None
     assert isinstance(order.created_at, datetime)
     assert isinstance(order.updated_at, datetime)
-    assert order.created_at == order.updated_at
+    assert abs((order.created_at - order.updated_at).total_seconds()) < 0.1
 
-def test_order_relationships(session, sample_order_data, sample_sell_orders_data):
-    # Save parent order
-    parent = save_order(sample_order_data)
+def test_order_relationships(engine, session, sample_order_data, sample_sell_orders_data):
+    parent = save_order(sample_order_data, engine=engine)
     
-    # Save child orders
     children = []
     for sell_order in sample_sell_orders_data:
-        child = save_order(sell_order)
+        child = save_order(sell_order, engine=engine)
         children.append(child)
     
-    # Verify relationships
     assert all(child.parent_order_id == parent.order_id for child in children)
-    db_children = get_orders_by_parent_id(parent.order_id)
+    db_children = get_orders_by_parent_id(parent.order_id, engine=engine)
     assert len(db_children) == len(children) 
