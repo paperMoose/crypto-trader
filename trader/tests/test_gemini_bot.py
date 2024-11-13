@@ -1,8 +1,8 @@
 import pytest
 import os
 import json
-from gemini_bot import load_orders, save_orders, check_order_status, ORDER_FILE
-from client import GeminiClient, Symbol, OrderSide, OrderType
+from trader.gemini_bot import check_order_status
+from trader.client import GeminiClient, Symbol, OrderSide, OrderType
 import logging
 
 # Fixture for mock data
@@ -42,27 +42,7 @@ def mock_env_vars():
     if original_api_secret:
         os.environ["GEMINI_API_SECRET"] = original_api_secret
 
-# Fixture to handle temporary order file
-@pytest.fixture
-def temp_order_file(monkeypatch, tmp_path):
-    test_order_file = tmp_path / "orders.json"
-    monkeypatch.setattr('gemini_bot.ORDER_FILE', str(test_order_file))
-    return test_order_file
 
-# Test loading orders from JSON file
-def test_load_orders(temp_order_file):
-    # Create a temporary orders.json file with empty dict
-    temp_order_file.write_text("{}")
-    
-    orders = load_orders()
-    assert isinstance(orders, dict)
-    assert orders == {}
-
-# Test saving orders to JSON file
-def test_save_orders(mock_order_data, temp_order_file):
-    save_orders(mock_order_data)
-    loaded_data = load_orders()
-    assert loaded_data == mock_order_data
 
 # Test checking order status with mock
 def test_check_order_status(mock_client):

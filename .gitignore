@@ -33,4 +33,9 @@ ENV/
 .vscode/
 *.swp
 *.swo
-.DS_Store 
+.DS_Store
+
+# SQLite files
+*.db
+*.sqlite
+*.sqlite3

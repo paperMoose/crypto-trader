@@ -3,7 +3,7 @@ import json
 import hmac
 import hashlib
 import base64
-from config import API_KEY, API_SECRET, BASE_URL, get_nonce
+from trader.config import API_KEY, API_SECRET, BASE_URL, get_nonce
 from enum import Enum, auto
 
 class OrderSide(str, Enum):
