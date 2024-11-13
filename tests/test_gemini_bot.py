@@ -2,13 +2,21 @@ import pytest
 import os
 import json
 from gemini_bot import load_orders, save_orders, check_order_status, ORDER_FILE
-from client import GeminiClient
+from client import GeminiClient, Symbol, OrderSide, OrderType
 import logging
 
 # Fixture for mock data
 @pytest.fixture
 def mock_order_data():
-    return {"123": {"status": "open", "amount": 100}}
+    return {
+        "123": {
+            "status": "open",
+            "amount": 100,
+            "side": OrderSide.BUY,
+            "symbol": Symbol.DOGEUSD,
+            "type": OrderType.EXCHANGE_LIMIT
+        }
+    }
 
 # Fixture for mock client
 @pytest.fixture
@@ -88,6 +96,7 @@ def test_gemini_client_integration():
             assert "original_amount" in order
             assert "price" in order
             assert "side" in order
+            assert order["side"] in [side.value for side in OrderSide]
             
         logging.info(f"Found {len(response)} active orders")
             
