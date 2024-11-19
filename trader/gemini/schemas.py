@@ -24,14 +24,22 @@ class OrderResponse(BaseModel):
     is_cancelled: bool
     is_hidden: bool
     was_forced: bool
-    executed_amount: str = "0"
-    remaining_amount: str
+    executed_amount: str
+    remaining_amount: str | None = None
     original_amount: str
     price: str
     stop_price: Optional[str] = None
     client_order_id: Optional[str] = None
     options: List[str]
     status: OrderStatus | None = None
+
+    def model_post_init(self, __context) -> None:
+        """Calculate remaining_amount if not provided"""
+        if self.remaining_amount is None:
+            # Convert to float for calculation, then back to string
+            executed = float(self.executed_amount)
+            original = float(self.original_amount)
+            self.remaining_amount = str(original - executed)
 
 class OrderStatusResponse(OrderResponse):
     trades: Optional[List[dict]] = None

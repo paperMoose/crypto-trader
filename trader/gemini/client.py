@@ -58,6 +58,17 @@ class GeminiClient:
             "side": side,
             "type": order_type
         }
+        
+        # Add optional parameters if they are provided
+        if stop_price is not None:
+            payload["stop_price"] = str(stop_price)
+        if client_order_id is not None:
+            payload["client_order_id"] = client_order_id
+        if options is not None:
+            payload["options"] = options
+        if account is not None:
+            payload["account"] = account
+
         response = self._make_request(endpoint, payload)
         return parse_response(response, OrderResponse)
 
