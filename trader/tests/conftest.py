@@ -6,7 +6,11 @@ from sqlmodel import Session, SQLModel, create_engine
 from trader.gemini.enums import Symbol
 from sqlalchemy.pool import StaticPool
 from trader.models import StrategyType
+from sqlalchemy.engine import create_engine
+from sqlalchemy_utils import database_exists, create_database, drop_database
+from trader.database import init_db
 
+TEST_DATABASE_URL = "postgresql://gemini_bot:gemini_bot_password@localhost:5433/gemini_bot_test"
 
 @pytest.fixture(autouse=True)
 def check_credentials():
@@ -15,25 +19,32 @@ def check_credentials():
     if not (os.getenv("GEMINI_API_KEY") and os.getenv("GEMINI_API_SECRET")):
         pytest.skip("Gemini API credentials not found in environment") 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def engine():
-    """Create a new in-memory database for each test"""
-    from trader.models import SQLModel, Order, TradingStrategy
+    """Create a test database and return the engine"""
+    if database_exists(TEST_DATABASE_URL):
+        drop_database(TEST_DATABASE_URL)
     
-    engine = create_engine(
-        "sqlite://",  # In-memory database
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool
-    )
-    SQLModel.metadata.create_all(engine)
-    return engine
+    create_database(TEST_DATABASE_URL)
+    
+    engine = init_db(TEST_DATABASE_URL)
+    
+    yield engine
+    
+    drop_database(TEST_DATABASE_URL)
 
 @pytest.fixture
 def session(engine):
-    """Create a new database session for each test"""
-    with Session(engine) as session:
-        yield session
-        session.rollback() 
+    """Create a new database session for a test"""
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+
+    yield session
+
+    session.close()
+    transaction.rollback()
+    connection.close()
 
 @pytest.fixture(scope="function")
 def mock_gemini_client():

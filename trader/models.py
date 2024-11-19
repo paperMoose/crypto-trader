@@ -3,10 +3,12 @@ from sqlalchemy import JSON
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+from decimal import Decimal
 
 class StrategyType(str, Enum):
     RANGE = "range"
     BREAKOUT = "breakout"
+    TAKE_PROFIT = "take_profit"
 
 class OrderType(str, Enum):
     LIMIT_BUY = "limit_buy"
@@ -32,7 +34,7 @@ class OrderState(str, Enum):
 
 class TradingStrategy(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(index=True)
     type: StrategyType
     symbol: str
     config: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
@@ -42,12 +44,18 @@ class TradingStrategy(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_checked_at: datetime = Field(default_factory=datetime.utcnow)
     check_interval: int = Field(default=1)
+    total_profit: str = Field(default="0.0")
+    realized_profit: str = Field(default="0.0")
+    tax_reserve: str = Field(default="0.0")
+    available_profit: str = Field(default="0.0")
     
     orders: List["Order"] = Relationship(back_populates="strategy")
 
 class Order(SQLModel, table=True):
+    __tablename__ = "order"
+    
     id: Optional[int] = Field(default=None, primary_key=True)
-    order_id: str = Field(index=True, unique=True)
+    order_id: str = Field(unique=True)
     status: OrderState
     amount: str
     price: str
@@ -57,12 +65,8 @@ class Order(SQLModel, table=True):
     stop_price: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    parent_order_id: Optional[str] = Field(
-        default=None, 
-        foreign_key="order.order_id", 
-        index=True
-    )
-    
+    parent_order_id: Optional[str] = Field(default=None, foreign_key="order.order_id")
     strategy_id: Optional[int] = Field(default=None, foreign_key="tradingstrategy.id")
+    
     strategy: Optional[TradingStrategy] = Relationship(back_populates="orders")
  
