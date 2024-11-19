@@ -53,6 +53,7 @@ async def test_place_order(order_config):
         return response.order_id  # For use in other tests
 
 @pytest.mark.asyncio
+@pytest.mark.skip(reason="relies on funds")
 async def test_place_stop_limit_order(stop_limit_config):
     """Test placing a stop limit order"""
     async with GeminiClient() as client:
