@@ -15,7 +15,7 @@ def range_strategy_data():
         "name": "Test Range Strategy",
         "type": StrategyType.RANGE,
         "symbol": "dogeusd",
-        "state": StrategyState.ACTIVE.value,
+        "state": StrategyState.ACTIVE,
         "check_interval": 60,
         "config": {
             "support_price": "0.30",
@@ -31,7 +31,7 @@ def breakout_strategy_data():
         "name": "Test Breakout Strategy",
         "type": StrategyType.BREAKOUT,
         "symbol": "dogeusd",
-        "state": StrategyState.ACTIVE.value,
+        "state": StrategyState.ACTIVE,
         "check_interval": 60,
         "config": {
             "breakout_price": "0.35",
@@ -282,7 +282,7 @@ async def test_strategy_manager_update_orders(session, mock_gemini_client):
         name="Test Strategy",
         type=StrategyType.RANGE,
         symbol="dogeusd",
-        state=StrategyState.ACTIVE.value,
+        state=StrategyState.ACTIVE,
         check_interval=10
     )
     strategy = save_strategy(strategy.model_dump(), session)
@@ -300,15 +300,16 @@ async def test_strategy_manager_update_orders(session, mock_gemini_client):
     )
     order = save_order(order.model_dump(), session)
     
-    # Mock the order status response with all required fields
+    # Mock the order status response
     mock_gemini_client.check_order_status.return_value = create_mock_order_response(
         'test_order_123',
-        status=OrderState.FILLED.value,
+        status=OrderState.FILLED,
         amount="1000",
         price="0.35"
     )
     
-    await manager.update_orders(strategy)
+    # Use service directly instead of manager
+    await manager.service.order_service.update_order_statuses(strategy)
     session.refresh(order)
     
     assert order.status == OrderState.FILLED
@@ -323,8 +324,9 @@ async def test_strategy_manager_monitor_strategies(session, mock_gemini_client, 
     async def mock_monitor(self):  # Add self parameter
         strategies = [strategy]
         for s in strategies:
-            await manager.update_orders(s)
-            await manager.strategies[s.type].execute(s, session)
+            # Use service instead of manager.update_orders
+            await self.service.order_service.update_order_statuses(s)
+            await self.strategies[s.type].execute(s, session)
     
     # Configure place_order mock
     mock_gemini_client.place_order.side_effect = [
@@ -358,12 +360,13 @@ async def test_strategy_manager_basic_cycle(session, mock_gemini_client, range_s
     # Update order status to filled
     mock_gemini_client.check_order_status.return_value = create_mock_order_response(
         'buy_123',
-        status=OrderState.FILLED.value,
+        status=OrderState.FILLED,
         amount=range_strategy_data['config']['amount'],
         price=range_strategy_data['config']['support_price']
     )
     
-    await manager.update_orders(strategy)
+    # Use service instead of manager.update_orders
+    await manager.service.order_service.update_order_statuses(strategy)
     
     # Mock current price
     mock_gemini_client.get_price.return_value = "0.32"
@@ -413,13 +416,13 @@ async def test_breakout_strategy_order_flow(session, mock_gemini_client, breakou
     # Mock order status as filled
     mock_gemini_client.check_order_status.return_value = create_mock_order_response(
         'stop_123',
-        status=OrderState.FILLED.value,
+        status=OrderState.FILLED,
         amount=breakout_strategy_data['config']['amount'],
         price=breakout_strategy_data['config']['breakout_price']
     )
     
-    # Update order status
-    await manager.update_orders(strategy)
+    # Use service instead of manager.update_orders
+    await manager.service.order_service.update_order_statuses(strategy)
     session.refresh(strategy)
     assert strategy.orders[0].status == OrderState.FILLED
     
@@ -460,9 +463,13 @@ async def test_breakout_strategy_order_flow(session, mock_gemini_client, breakou
 # Helper function to create mock order responses
 def create_mock_order_response(order_id, status="accepted", **kwargs):
     """Create a mock order response with all required fields"""
+    # Convert status string to OrderState if it isn't already
+    if isinstance(status, str):
+        status = OrderState(status)
+    
     return type('Response', (), {
         'order_id': order_id,
-        'status': status,
+        'status': status,  # This will be an OrderState enum
         'original_amount': kwargs.get('amount', '1000'),
         'price': kwargs.get('price', '0.35'),
         'side': kwargs.get('side', 'buy'),

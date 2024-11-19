@@ -20,6 +20,7 @@ class StrategyState(str, Enum):
     PAUSED = "paused"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELED = "canceled"
 
 class OrderState(str, Enum):
     ACCEPTED = "accepted"

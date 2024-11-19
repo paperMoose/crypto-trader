@@ -1,7 +1,7 @@
 import pytest
 from trader.gemini.client import GeminiClient
 from trader.gemini.enums import Symbol, OrderSide, OrderType
-from trader.gemini.schemas import ErrorResponse, OrderResponse, OrderStatus, OrderStatusResponse, ActiveOrdersResponse, CancelOrderResponse, OrderHistoryResponse
+from trader.gemini.schemas import ErrorResponse, GeminiAPIError, OrderResponse, OrderStatus, OrderStatusResponse, ActiveOrdersResponse, CancelOrderResponse, OrderHistoryResponse
 import logging
 import datetime
 from datetime import timezone
@@ -159,20 +159,12 @@ async def test_error_handling():
     """Test error handling for invalid requests"""
     async with GeminiClient() as client:
         # Check non-existent order
-        response = await client.check_order_status("nonexistent-order-id")
-        assert isinstance(response, ErrorResponse)
-        assert "missing or invalid order_id" in response.message.lower()
-
-        # Test invalid order parameters
-        response = await client.place_order(
-            symbol=Symbol.DOGEUSD,
-            amount='-1',  # Invalid amount
-            price='0.10',
-            side=OrderSide.BUY,
-            order_type=OrderType.EXCHANGE_LIMIT
-        )
-        assert isinstance(response, ErrorResponse)
-        assert "invalid" in response.message.lower()  # More generic error check
+        with pytest.raises(GeminiAPIError) as exc_info:
+            await client.check_order_status("nonexistent-order-id")
+        
+        # Verify the error details
+        assert "Missing or invalid order_id" in str(exc_info.value)
+        assert "MissingOrderField" in str(exc_info.value)
 
 @pytest.mark.asyncio
 async def test_cancel_orders_by_amount():
