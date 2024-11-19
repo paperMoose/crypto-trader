@@ -22,11 +22,11 @@ class StrategyState(str, Enum):
     FAILED = "failed"
 
 class OrderState(str, Enum):
-    PENDING = "pending"
     PLACED = "placed"
+    ACTIVE = "active"
     FILLED = "filled"
     CANCELLED = "cancelled"
-    FAILED = "failed"
+    REJECTED = "rejected"
 
 class TradingStrategy(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

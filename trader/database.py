@@ -1,5 +1,5 @@
 from sqlmodel import Session, select, create_engine
-from trader.models import Order, OrderState, OrderType
+from trader.models import Order, OrderState, OrderType, TradingStrategy, StrategyType, StrategyState
 from trader.config import SQLITE_DATABASE_URL
 from datetime import datetime
 from typing import List, Optional, Dict, Any
@@ -113,4 +113,74 @@ def delete_order(order_id: str, engine=None) -> bool:
             session.delete(order)
             session.commit()
             return True
-    return False 
+    return False
+
+def save_strategy(strategy_data: Dict[str, Any], session: Optional[Session] = None, engine: Optional[Engine] = None) -> TradingStrategy:
+    """
+    Save a new trading strategy to the database.
+    
+    Args:
+        strategy_data: Dictionary containing strategy configuration
+        session: Optional existing session to use
+        engine: Optional engine to use if no session provided
+    """
+    local_session = False
+    if session is None:
+        engine = engine or default_engine
+        session = Session(engine)
+        local_session = True
+
+    try:
+        # Convert string values to enum values if needed
+        if isinstance(strategy_data.get('type'), str):
+            strategy_data['type'] = StrategyType(strategy_data['type'])
+        if isinstance(strategy_data.get('state'), str):
+            strategy_data['state'] = StrategyState(strategy_data['state'])
+
+        strategy = TradingStrategy(**strategy_data)
+        session.add(strategy)
+        session.commit()
+        session.refresh(strategy)
+        return strategy
+    finally:
+        if local_session:
+            session.close()
+
+def get_active_strategies(engine=None) -> List[TradingStrategy]:
+    """Get all active trading strategies"""
+    engine = engine or default_engine
+    with Session(engine) as session:
+        statement = select(TradingStrategy).where(
+            and_(
+                TradingStrategy.is_active == True,
+                TradingStrategy.state != StrategyState.COMPLETED
+            )
+        )
+        return session.exec(statement).all()
+
+def get_strategy_by_id(strategy_id: int, engine=None) -> Optional[TradingStrategy]:
+    """Get a specific strategy by its ID"""
+    engine = engine or default_engine
+    with Session(engine) as session:
+        statement = select(TradingStrategy).where(TradingStrategy.id == strategy_id)
+        return session.exec(statement).first()
+
+def update_strategy(strategy_id: int, engine=None, **updates) -> Optional[TradingStrategy]:
+    """Update an existing strategy in the database"""
+    engine = engine or default_engine
+    with Session(engine) as session:
+        statement = select(TradingStrategy).where(TradingStrategy.id == strategy_id)
+        strategy = session.exec(statement).first()
+        if strategy:
+            for key, value in updates.items():
+                if key == 'type' and isinstance(value, str):
+                    value = StrategyType(value)
+                elif key == 'state' and isinstance(value, str):
+                    value = StrategyState(value)
+                setattr(strategy, key, value)
+            strategy.updated_at = datetime.utcnow()
+            session.add(strategy)
+            session.commit()
+            session.refresh(strategy)
+            return strategy
+    return None 
