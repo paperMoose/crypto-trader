@@ -1,8 +1,10 @@
 from sqlmodel import Session, select, create_engine
-from trader.models import Order
+from trader.models import Order, OrderState, OrderType
 from trader.config import SQLITE_DATABASE_URL
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+from sqlalchemy import and_
+from sqlalchemy.engine.base import Engine
 
 # Initialize default database engine
 default_engine = create_engine(SQLITE_DATABASE_URL, echo=False)
@@ -29,28 +31,46 @@ def get_open_buy_orders(engine=None) -> List[Order]:
     engine = engine or default_engine
     with Session(engine) as session:
         statement = select(Order).where(
-            Order.side == "buy",
-            Order.status == "open",
-            Order.sell_orders_placed == False
+            and_(
+                Order.side == "buy",
+                Order.status.in_([OrderState.PENDING.value, OrderState.PLACED.value])
+            )
         )
         return session.exec(statement).all()
 
-def save_order(order_data, session: Session = None, engine=None):
+def save_order(order_data: Dict[str, Any], session: Optional[Session] = None, engine: Optional[Engine] = None) -> Order:
+    """
+    Save a new order to the database.
+    
+    Args:
+        order_data: Dictionary containing order data
+        session: Optional existing session to use
+        engine: Optional engine to use if no session provided
+        
+    Returns:
+        Order: The saved order instance
+    """
+    # Session management
+    local_session = False
     if session is None:
         engine = engine or default_engine
         session = Session(engine)
-        should_close = True
-    else:
-        should_close = False
+        local_session = True
 
     try:
+        # Convert string values to enum values if needed
+        if isinstance(order_data.get('status'), str):
+            order_data['status'] = OrderState(order_data['status'])
+        if isinstance(order_data.get('order_type'), str):
+            order_data['order_type'] = OrderType(order_data['order_type'])
+
         order = Order(**order_data)
         session.add(order)
         session.commit()
         session.refresh(order)
         return order
     finally:
-        if should_close:
+        if local_session:
             session.close()
 
 def update_order(order_id: str, engine=None, **updates) -> Optional[Order]:

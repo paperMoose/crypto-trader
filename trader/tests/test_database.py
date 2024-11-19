@@ -13,6 +13,7 @@ from trader.database import (
 )
 from trader.gemini.client import OrderSide, OrderType, Symbol
 from datetime import datetime
+from trader.models import OrderState, OrderType
 
 @pytest.fixture(name="engine")
 def engine_fixture():
@@ -30,12 +31,12 @@ def session_fixture(engine):
 def sample_order_data():
     return {
         "order_id": "test123",
-        "status": "open",
+        "status": OrderState.PENDING.value,
         "amount": "100",
         "price": "0.35",
         "side": OrderSide.BUY.value,
         "symbol": Symbol.DOGEUSD.value,
-        "order_type": OrderType.EXCHANGE_LIMIT.value
+        "order_type": "limit_buy"
     }
 
 @pytest.fixture
@@ -43,23 +44,23 @@ def sample_sell_orders_data(sample_order_data):
     return [
         {
             "order_id": "sell1",
-            "status": "open",
+            "status": OrderState.PENDING.value,
             "amount": "50",
             "price": "0.50",
             "side": OrderSide.SELL.value,
             "symbol": Symbol.DOGEUSD.value,
-            "order_type": OrderType.EXCHANGE_LIMIT.value,
+            "order_type": "limit_sell",
             "type": "take-profit-1",
             "parent_order_id": sample_order_data["order_id"]
         },
         {
             "order_id": "sell2",
-            "status": "open",
+            "status": OrderState.PENDING.value,
             "amount": "50",
             "price": "0.60",
             "side": OrderSide.SELL.value,
             "symbol": Symbol.DOGEUSD.value,
-            "order_type": OrderType.EXCHANGE_LIMIT.value,
+            "order_type": "limit_sell",
             "type": "take-profit-2",
             "parent_order_id": sample_order_data["order_id"]
         }
@@ -100,9 +101,8 @@ def test_update_order(engine, session, sample_order_data):
     import time
     time.sleep(0.1)
     
-    updated = update_order(order.order_id, engine=engine, status="filled", sell_orders_placed=True)
+    updated = update_order(order.order_id, engine=engine, status="filled")
     assert updated.status == "filled"
-    assert updated.sell_orders_placed is True
     assert updated.updated_at > original_updated_at
 
 def test_get_order_by_id(engine, session, sample_order_data):

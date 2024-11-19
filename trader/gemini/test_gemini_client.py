@@ -1,5 +1,4 @@
 import pytest
-import os
 from trader.gemini.client import GeminiClient
 from trader.gemini.enums import Symbol, OrderSide, OrderType
 from trader.gemini.schemas import ErrorResponse, OrderResponse, OrderStatusResponse, ActiveOrdersResponse, CancelOrderResponse

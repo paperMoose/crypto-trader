@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import JSON
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
@@ -32,20 +33,19 @@ class TradingStrategy(SQLModel, table=True):
     name: str
     type: StrategyType
     symbol: str
-    config: Dict[str, Any] = Field(default_factory=dict)  # Stores strategy-specific config
+    config: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
     state: StrategyState = Field(default=StrategyState.INIT)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_checked_at: datetime = Field(default_factory=datetime.utcnow)
-    check_interval: int = Field(default=60)  # Seconds between checks
+    check_interval: int = Field(default=60)
     
-    # Relationships
     orders: List["Order"] = Relationship(back_populates="strategy")
 
 class Order(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    order_id: str = Field(index=True)
+    order_id: str = Field(index=True, unique=True)
     status: OrderState
     amount: str
     price: str
@@ -55,8 +55,12 @@ class Order(SQLModel, table=True):
     stop_price: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+    parent_order_id: Optional[str] = Field(
+        default=None, 
+        foreign_key="order.order_id", 
+        index=True
+    )
     
-    # Strategy relationship
     strategy_id: Optional[int] = Field(default=None, foreign_key="tradingstrategy.id")
     strategy: Optional[TradingStrategy] = Relationship(back_populates="orders")
  
