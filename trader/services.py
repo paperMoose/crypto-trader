@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, List, Tuple, Dict, Any
 from sqlmodel import Session
-from trader.models import Order, OrderType, StrategyState, TradingStrategy, OrderState
+from trader.models import Order, OrderType, StrategyState, TradingStrategy, OrderState, StrategyType
 from trader.gemini.client import GeminiClient
 from trader.gemini.enums import Symbol, OrderSide, OrderType as GeminiOrderType
 from datetime import datetime
@@ -78,18 +78,19 @@ class OrderService:
                 response = await self.client.check_order_status(order.order_id)
                 if hasattr(response, 'status') and response.status is not None:
                     old_status = order.status
-                    order.status = response.status
-                    self.logger.info(f"Order {order.order_id} updated - Status: {old_status} -> {response.status}")
+                    order.status = OrderState(response.status.value if hasattr(response.status, 'value') else response.status)
+                    self.logger.info(f"Order {order.order_id} updated - Status: {old_status} -> {order.status}")
             except Exception as e:
                 self.logger.error(f"Error updating order {order.order_id}: {str(e)}")
         
         self.session.commit()
 
 class StrategyService:
-    def __init__(self, client: GeminiClient, session: Session):
+    def __init__(self, client: GeminiClient, session: Session, strategies=None):
         self.client = client
         self.session = session
         self.order_service = OrderService(client, session)
+        self.strategies = strategies
         self.logger = logging.getLogger("StrategyService")
 
     async def get_current_price(self, symbol: str) -> str:

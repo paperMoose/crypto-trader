@@ -181,7 +181,7 @@ class StrategyManager:
             StrategyType.RANGE: RangeStrategy(client),
             StrategyType.BREAKOUT: BreakoutStrategy(client)
         }
-        self.service = StrategyService(client, session)
+        self.service = StrategyService(client, session, self.strategies)
         self.logger.info("Strategy Manager initialized")
 
     async def monitor_strategies(self):
