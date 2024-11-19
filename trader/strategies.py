@@ -129,14 +129,18 @@ class BreakoutStrategy(BaseStrategy):
             buy_order = next((o for o in strategy.orders if o.side == OrderSide.BUY.value), None)
             
             if not buy_order:
-                self.logger.info(f"Placing breakout buy order at ${config['breakout_price']}")
-                await service.order_service.place_order(
-                    strategy=strategy,
-                    amount=config['amount'],
-                    price=config['breakout_price'],
-                    side=OrderSide.BUY,
-                    order_type=OrderType.LIMIT_BUY
-                )
+                # Only place breakout order if price is near breakout level
+                if float(current_price) >= float(config['breakout_price']) * 0.995:  # Within 0.5%
+                    self.logger.info(f"Placing breakout buy order at ${config['breakout_price']}")
+                    await service.order_service.place_order(
+                        strategy=strategy,
+                        amount=config['amount'],
+                        price=config['breakout_price'],
+                        side=OrderSide.BUY,
+                        order_type=OrderType.LIMIT_BUY
+                    )
+                else:
+                    self.logger.info(f"Price ${current_price} too far from breakout level ${config['breakout_price']}")
                 return
             
             # If buy order is filled, manage take profit and stop loss orders
