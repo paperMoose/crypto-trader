@@ -60,18 +60,37 @@ async def main():
     
     # Define strategies
     strategies = [
-        # Take Profit strategy for existing DOGE position
         {
-            "name": "DOGE Take Profit 0.420 (Existing Position)", 
-            "type": StrategyType.TAKE_PROFIT,
+            "name": "DOGE Range Trade 0.38-0.42",
+            "type": StrategyType.RANGE,
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "current_position": "10000",     # Amount of DOGE we already own
-                "entry_price": "0.40800",        # Our average entry price
-                "take_profit_price": "0.42000",  # Target sell price for +2.94% profit ($120)
-                "stop_loss_price": "0.40400",    # Stop loss for -0.98% loss ($40)
+                "support_price": "0.38000",    # Buy zone
+                "resistance_price": "0.42000",  # Sell zone
+                "amount": "5000",              # 5000 DOGE position
+                "stop_loss_price": "0.37000"   # Stop loss below support
+                # Max Gain: $200 ((0.42 - 0.38) * 5000 = $200 or 10.5%)
+                # Max Loss: $50 ((0.38 - 0.37) * 5000 = $50 or 2.6%)
+                # Risk:Reward Ratio = 1:4
+            }
+        },
+        {
+            "name": "DOGE Breakout Above 0.42",
+            "type": StrategyType.BREAKOUT,
+            "symbol": "dogeusd",
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "breakout_price": "0.42100",   # Entry above resistance
+                "amount": "5000",              # 5000 DOGE position
+                "take_profit_1": "0.45000",    # First target (50% of position)
+                "take_profit_2": "0.48000",    # Second target (50% of position)
+                "stop_loss": "0.41000"         # Tighter stop loss
+                # Max Gain: $295 (Average of both targets: (0.45 + 0.48)/2 - 0.421) * 5000 = $295 or 14%
+                # Max Loss: $55 ((0.421 - 0.41) * 5000 = $55 or 2.6%)
+                # Risk:Reward Ratio = 1:5.4
             }
         }
     ]
