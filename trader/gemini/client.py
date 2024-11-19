@@ -125,29 +125,6 @@ class GeminiClient:
         response = await self._make_request(endpoint, payload)
         return OrderHistoryResponse.from_response(response)
 
-    async def place_oco_order(
-        self, 
-        symbol: Symbol, 
-        amount: str, 
-        price: str,
-        stop_price: str,
-        stop_limit_price: str
-    ) -> OrderResponse:
-        """Place an OCO (One-Cancels-Other) order"""
-        
-        payload = {
-            "symbol": symbol.value,
-            "amount": amount,
-            "price": price,
-            "stop_price": stop_price,
-            "stop_limit_price": stop_limit_price,
-            "side": "sell",
-            "type": "exchange-oco"
-        }
-        
-        response = await self._make_request("order/new", payload)
-        return parse_response(response, OrderResponse)
-
     async def get_price(self, symbol: Symbol) -> str:
         """Get current price for a symbol"""
         endpoint = f"/v1/pubticker/{symbol.value}"
