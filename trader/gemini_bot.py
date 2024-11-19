@@ -2,9 +2,9 @@ import asyncio
 import logging
 from trader.database import init_db, get_engine, get_session, get_strategy_by_name
 from trader.gemini.client import GeminiClient
-from trader.models import StrategyState, StrategyType, Status
+from trader.models import StrategyState, StrategyType
 from trader.strategies import StrategyManager
-from sqlalchemy import select
+from sqlmodel import select
 from trader.models import TradingStrategy
 
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +25,7 @@ async def deactivate_removed_strategies(manager: StrategyManager, session, curre
                 
                 # Update strategy status
                 strategy.is_active = False
-                strategy.status = Status.CANCELLED
+                strategy.state = StrategyState.CANCELED
                 session.add(strategy)
                 
         session.commit()
@@ -62,16 +62,16 @@ async def main():
     strategies = [
         # Range strategy
         {
-            "name": "DOGE Range 0.408-0.420 (Position 1)",
+            "name": "DOGE Range 0.408-0.420 (Position 2)", 
             "type": StrategyType.RANGE,
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "support_price": "0.40800",
-                "resistance_price": "0.42000",
-                "stop_loss_price": "0.40400",
-                "amount": "5000"              # First 5000 DOGE position
+                "support_price": "0.40800",   # Buy price: $4,080.00 position cost
+                "resistance_price": "0.42000", # Sell price for +2.94% profit ($120 on 10000 DOGE)
+                "stop_loss_price": "0.40400", # Stop loss for -0.98% loss ($40 on 10000 DOGE)
+                "amount": "10000"             # 10000 DOGE position (~$4,080 capital use)
             }
         }
     ]
