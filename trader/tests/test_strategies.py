@@ -109,28 +109,23 @@ async def test_range_strategy_filled_buy_order(session, mock_gemini_client, rang
     session.add(buy_order)
     session.commit()
     
-    # Configure mock for sell and stop loss orders
-    mock_gemini_client.place_order.side_effect = [
-        type('Response', (), {'order_id': 'test_sell_123'}),
-        type('Response', (), {'order_id': 'test_stop_123'})
-    ]
+    # Configure mock for current price check
+    mock_gemini_client.get_price.return_value = "0.32"  # Price above stop loss
+    
+    # Configure mock for sell order
+    mock_gemini_client.place_order.return_value = create_mock_order_response(
+        'test_sell_123',
+        price=strategy.config['resistance_price']
+    )
     
     range_strategy = RangeStrategy(mock_gemini_client)
     await range_strategy.execute(strategy, session)
     
-    # Should place both sell and stop loss orders
-    assert mock_gemini_client.place_order.call_count == 2
-    
-    sell_call = mock_gemini_client.place_order.call_args_list[0][1]
-    assert sell_call["side"] == OrderSide.SELL
-    assert sell_call["price"] == "0.35"
-    assert sell_call["amount"] == "1000"
-    
-    stop_call = mock_gemini_client.place_order.call_args_list[1][1]
-    assert stop_call["side"] == OrderSide.SELL
-    assert stop_call["price"] == "0.29"
-    assert stop_call["amount"] == "1000"
-    assert stop_call["order_type"] == GeminiOrderType.EXCHANGE_STOP_LIMIT
+    # Should place sell order at resistance
+    assert mock_gemini_client.place_order.call_count == 1
+    call_args = mock_gemini_client.place_order.call_args[1]
+    assert call_args["side"] == OrderSide.SELL
+    assert call_args["price"] == strategy.config['resistance_price']
 
 @pytest.mark.asyncio
 async def test_range_strategy_existing_orders(session, mock_gemini_client, range_strategy_data):
@@ -200,7 +195,7 @@ def test_breakout_strategy_validate_config():
 @pytest.mark.asyncio
 async def test_breakout_strategy_initial_order(session, mock_gemini_client, breakout_strategy_data):
     """Test that breakout strategy places initial stop order correctly"""
-    mock_gemini_client.place_order.return_value = type('Response', (), {'order_id': 'test_buy_123'})
+    mock_gemini_client.place_order.return_value = create_mock_order_response('test_buy_123')
     
     strategy = TradingStrategy(**breakout_strategy_data)
     session.add(strategy)
@@ -214,13 +209,11 @@ async def test_breakout_strategy_initial_order(session, mock_gemini_client, brea
     assert call_args["side"] == OrderSide.BUY
     assert call_args["price"] == "0.35"
     assert call_args["amount"] == "1000"
-    assert call_args["order_type"] == GeminiOrderType.EXCHANGE_STOP_LIMIT
-    assert float(call_args["stop_price"]) < float(call_args["price"])
+    assert call_args["order_type"] == GeminiOrderType.EXCHANGE_LIMIT
 
 @pytest.mark.asyncio
 async def test_breakout_strategy_take_profit_orders(session, mock_gemini_client, breakout_strategy_data):
     """Test that breakout strategy places take profit orders after initial order fills"""
-    # Create strategy using save_strategy
     strategy = save_strategy(breakout_strategy_data, session)
     
     # Create filled buy order using save_order
@@ -231,7 +224,7 @@ async def test_breakout_strategy_take_profit_orders(session, mock_gemini_client,
         "price": "0.35",
         "side": OrderSide.BUY.value,
         "symbol": "dogeusd",
-        "order_type": OrderType.STOP_LIMIT_BUY,
+        "order_type": OrderType.LIMIT_BUY,
         "strategy_id": strategy.id
     }
     buy_order = save_order(buy_order_data, session)
@@ -239,21 +232,26 @@ async def test_breakout_strategy_take_profit_orders(session, mock_gemini_client,
     # Mock get_orders to return empty list (no existing orders)
     mock_gemini_client.get_orders.return_value = []
     
-    # Configure mock responses with unique order IDs
+    # Configure mock responses with proper fields
     mock_responses = [
-        type('Response', (), {'order_id': f'test_tp{i}_123'})
-        for i in range(1, 4)
+        create_mock_order_response(f'test_tp{i}_123', 
+            amount=str(float(breakout_strategy_data['config']['amount'])/2),
+            side=OrderSide.SELL.value)
+        for i in range(1, 3)
     ]
     mock_gemini_client.place_order.side_effect = mock_responses
+    
+    # Mock current price above stop loss
+    mock_gemini_client.get_price.return_value = "0.34"
     
     breakout_strategy = BreakoutStrategy(mock_gemini_client)
     await breakout_strategy.execute(strategy, session)
     
-    # Verify take profit and stop loss orders were placed
-    assert mock_gemini_client.place_order.call_count == 3
+    # Verify take profit orders were placed
+    assert mock_gemini_client.place_order.call_count == 2  # Only 2 take profit orders
     
     calls = mock_gemini_client.place_order.call_args_list
-    assert len(calls) == 3
+    assert len(calls) == 2
     
     # Verify order parameters
     tp1_call = calls[0][1]
@@ -263,10 +261,6 @@ async def test_breakout_strategy_take_profit_orders(session, mock_gemini_client,
     tp2_call = calls[1][1]
     assert tp2_call['price'] == breakout_strategy_data['config']['take_profit_2']
     assert tp2_call['amount'] == str(float(breakout_strategy_data['config']['amount']) / 2)
-    
-    sl_call = calls[2][1]
-    assert sl_call['price'] == breakout_strategy_data['config']['stop_loss']
-    assert sl_call['amount'] == breakout_strategy_data['config']['amount']
 
 # Strategy Manager Tests
 @pytest.mark.asyncio
@@ -306,13 +300,16 @@ async def test_strategy_manager_update_orders(session, mock_gemini_client):
     )
     order = save_order(order.model_dump(), session)
     
-    # Mock the order status response
-    mock_gemini_client.check_order_status.return_value = type(
-        'Response', (), {'order_id': 'test_order_123', 'status': OrderState.FILLED.value}
+    # Mock the order status response with all required fields
+    mock_gemini_client.check_order_status.return_value = create_mock_order_response(
+        'test_order_123',
+        status=OrderState.FILLED.value,
+        amount="1000",
+        price="0.35"
     )
     
     await manager.update_orders(strategy)
-    session.refresh(order)  # Refresh from DB
+    session.refresh(order)
     
     assert order.status == OrderState.FILLED
 
@@ -348,44 +345,48 @@ async def test_strategy_manager_basic_cycle(session, mock_gemini_client, range_s
     strategy = await manager.create_strategy(range_strategy_data)
     
     # Configure mock for initial buy order
-    mock_gemini_client.place_order.return_value = type('Response', (), {'order_id': 'buy_123'})
+    mock_gemini_client.place_order.return_value = create_mock_order_response(
+        'buy_123',
+        amount=range_strategy_data['config']['amount'],
+        price=range_strategy_data['config']['support_price']
+    )
     
     # First execution to place buy order
     mock_gemini_client.get_orders.return_value = []
     await manager.strategies[strategy.type].execute(strategy, session)
     
-    # Verify initial buy order placement
-    session.refresh(strategy)
-    assert len(strategy.orders) == 1
-    buy_order = strategy.orders[0]
-    assert buy_order.side == OrderSide.BUY.value
-    assert buy_order.price == range_strategy_data['config']['support_price']
-    
-    # Configure mock for order status update to filled
-    mock_gemini_client.check_order_status.return_value = type(
-        'Response', (), {'order_id': 'buy_123', 'status': OrderState.FILLED.value}
+    # Update order status to filled
+    mock_gemini_client.check_order_status.return_value = create_mock_order_response(
+        'buy_123',
+        status=OrderState.FILLED.value,
+        amount=range_strategy_data['config']['amount'],
+        price=range_strategy_data['config']['support_price']
     )
     
-    # Update order status
     await manager.update_orders(strategy)
     
-    # Configure mock for sell and stop loss orders
+    # Mock current price
+    mock_gemini_client.get_price.return_value = "0.32"
+    
+    # Configure mock for sell order
     mock_gemini_client.place_order.side_effect = [
-        type('Response', (), {'order_id': 'sell_123'}),
-        type('Response', (), {'order_id': 'stop_123'})
+        create_mock_order_response(
+            'sell_123',
+            side=OrderSide.SELL.value,
+            price=range_strategy_data['config']['resistance_price']
+        )
     ]
     
     # Execute again to place sell orders
     await manager.strategies[strategy.type].execute(strategy, session)
     
-    # Verify sell orders were placed
+    # Verify orders
     session.refresh(strategy)
-    assert len(strategy.orders) == 3  # Buy + Sell + Stop Loss
+    assert len(strategy.orders) == 2  # Buy + Sell
     
-    sell_orders = [o for o in strategy.orders if o.side == OrderSide.SELL.value]
-    assert len(sell_orders) == 2
-    assert any(o.price == range_strategy_data['config']['resistance_price'] for o in sell_orders)
-    assert any(o.price == range_strategy_data['config']['stop_loss_price'] for o in sell_orders)
+    sell_order = next((o for o in strategy.orders if o.side == OrderSide.SELL.value), None)
+    assert sell_order is not None
+    assert sell_order.price == range_strategy_data['config']['resistance_price']
 
 @pytest.mark.asyncio
 async def test_breakout_strategy_order_flow(session, mock_gemini_client, breakout_strategy_data):
@@ -393,49 +394,78 @@ async def test_breakout_strategy_order_flow(session, mock_gemini_client, breakou
     manager = StrategyManager(session, mock_gemini_client)
     strategy = await manager.create_strategy(breakout_strategy_data)
     
-    # Mock initial stop order placement
-    mock_gemini_client.place_order.side_effect = [
-        type('Response', (), {'order_id': 'stop_123'}),
-        type('Response', (), {'order_id': 'tp1_123'}),
-        type('Response', (), {'order_id': 'tp2_123'}),
-        type('Response', (), {'order_id': 'sl_123'})
-    ]
+    # Mock initial order placement
+    mock_gemini_client.place_order.return_value = create_mock_order_response(
+        'stop_123',
+        amount=breakout_strategy_data['config']['amount'],
+        price=breakout_strategy_data['config']['breakout_price']
+    )
     
-    # First check: stop order is live
-    mock_gemini_client.check_order_status.side_effect = [
-        type('Response', (), {'order_id': 'stop_123', 'status': OrderState.LIVE.value})
-    ]
-    mock_gemini_client.get_orders.return_value = []
-    
-    # Execute initial cycle
-    await manager.update_orders(strategy)
+    # Execute initial cycle to place first order
     await manager.strategies[strategy.type].execute(strategy, session)
     
-    # Verify initial stop order
+    # Verify initial order
     session.refresh(strategy)
     assert len(strategy.orders) == 1
-    stop_order = strategy.orders[0]
-    assert stop_order.order_type == OrderType.STOP_LIMIT_BUY
-    assert stop_order.price == breakout_strategy_data['config']['breakout_price']
+    initial_order = strategy.orders[0]
+    assert initial_order.order_type == OrderType.LIMIT_BUY
     
-    # Mock stop order fill and subsequent orders
-    mock_gemini_client.check_order_status.side_effect = [
-        type('Response', (), {'order_id': 'stop_123', 'status': OrderState.FILLED.value})
-    ]
+    # Mock order status as filled
+    mock_gemini_client.check_order_status.return_value = create_mock_order_response(
+        'stop_123',
+        status=OrderState.FILLED.value,
+        amount=breakout_strategy_data['config']['amount'],
+        price=breakout_strategy_data['config']['breakout_price']
+    )
     
-    # Execute second cycle
+    # Update order status
     await manager.update_orders(strategy)
+    session.refresh(strategy)
+    assert strategy.orders[0].status == OrderState.FILLED
+    
+    # Configure mock for take profit orders
+    mock_responses = [
+        create_mock_order_response(
+            f'tp{i}_123',
+            side=OrderSide.SELL.value,
+            amount=str(float(breakout_strategy_data['config']['amount'])/2),
+            price=breakout_strategy_data['config'][f'take_profit_{i}']
+        )
+        for i in range(1, 3)
+    ]
+    mock_gemini_client.place_order.side_effect = mock_responses
+    
+    # Mock current price above stop loss
+    mock_gemini_client.get_price.return_value = "0.36"  # Above stop loss
+    
+    # Execute second cycle to place take profit orders
     await manager.strategies[strategy.type].execute(strategy, session)
     
-    # Verify take profit and stop loss orders
+    # Verify all orders
     session.refresh(strategy)
-    assert len(strategy.orders) == 4  # Stop + 2 TPs + SL
+    assert len(strategy.orders) == 3  # Initial buy + 2 take profits
     
-    tp_orders = [o for o in strategy.orders if o.order_type == OrderType.LIMIT_SELL 
-                 and o.price in [breakout_strategy_data['config']['take_profit_1'], 
-                               breakout_strategy_data['config']['take_profit_2']]]
+    # Verify take profit orders
+    tp_orders = [o for o in strategy.orders if o.side == OrderSide.SELL.value]
     assert len(tp_orders) == 2
     
-    sl_order = next(o for o in strategy.orders 
-                   if o.price == breakout_strategy_data['config']['stop_loss'])
-    assert sl_order.order_type == OrderType.STOP_LIMIT_SELL
+    # Verify take profit prices
+    tp_prices = {o.price for o in tp_orders}
+    expected_prices = {
+        breakout_strategy_data['config']['take_profit_1'],
+        breakout_strategy_data['config']['take_profit_2']
+    }
+    assert tp_prices == expected_prices
+
+# Helper function to create mock order responses
+def create_mock_order_response(order_id, status="accepted", **kwargs):
+    """Create a mock order response with all required fields"""
+    return type('Response', (), {
+        'order_id': order_id,
+        'status': status,
+        'original_amount': kwargs.get('amount', '1000'),
+        'price': kwargs.get('price', '0.35'),
+        'side': kwargs.get('side', 'buy'),
+        'symbol': kwargs.get('symbol', 'dogeusd'),
+        'stop_price': kwargs.get('stop_price', None)
+    })
