@@ -1,4 +1,4 @@
-import requests
+import aiohttp
 import json
 import hmac
 import hashlib
@@ -18,25 +18,40 @@ class GeminiClient:
         self.api_key = API_KEY
         self.api_secret = API_SECRET
         self.base_url = BASE_URL
+        self.session = None
+
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            await self.session.close()
 
     def _generate_signature(self, payload):
         b64 = base64.b64encode(json.dumps(payload).encode())
         signature = hmac.new(self.api_secret, b64, hashlib.sha384).hexdigest()
         return b64, signature
 
-    def _make_request(self, endpoint, payload):
+    async def _make_request(self, endpoint, payload):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         b64_payload, signature = self._generate_signature(payload)
+        
+        # Convert bytes to string for the headers
         headers = {
             "Content-Type": "text/plain",
             "X-GEMINI-APIKEY": self.api_key,
-            "X-GEMINI-PAYLOAD": b64_payload,
+            "X-GEMINI-PAYLOAD": b64_payload.decode('utf-8'),  # Convert bytes to string
             "X-GEMINI-SIGNATURE": signature
         }
         url = f"{self.base_url}{endpoint}"
-        response = requests.post(url, headers=headers)
-        return response.json()
+        
+        async with self.session.post(url, headers=headers) as response:
+            return await response.json()
 
-    def place_order(
+    async def place_order(
         self,
         symbol: Symbol,
         amount: str,
@@ -59,7 +74,6 @@ class GeminiClient:
             "type": order_type
         }
         
-        # Add optional parameters if they are provided
         if stop_price is not None:
             payload["stop_price"] = str(stop_price)
         if client_order_id is not None:
@@ -69,34 +83,34 @@ class GeminiClient:
         if account is not None:
             payload["account"] = account
 
-        response = self._make_request(endpoint, payload)
+        response = await self._make_request(endpoint, payload)
         return parse_response(response, OrderResponse)
 
-    def check_order_status(self, order_id: str) -> OrderStatusResponse:
+    async def check_order_status(self, order_id: str) -> OrderStatusResponse:
         endpoint = "/v1/order/status"
         payload = {
             "request": endpoint,
             "nonce": get_nonce(),
             "order_id": order_id
         }
-        response = self._make_request(endpoint, payload)
+        response = await self._make_request(endpoint, payload)
         return parse_response(response, OrderStatusResponse)
 
-    def get_active_orders(self) -> ActiveOrdersResponse:
+    async def get_active_orders(self) -> ActiveOrdersResponse:
         endpoint = "/v1/orders"
         payload = {
             "request": endpoint,
             "nonce": get_nonce()
         }
-        response = self._make_request(endpoint, payload)
+        response = await self._make_request(endpoint, payload)
         return ActiveOrdersResponse.from_response(response)
 
-    def cancel_order(self, order_id: str) -> CancelOrderResponse:
+    async def cancel_order(self, order_id: str) -> CancelOrderResponse:
         endpoint = "/v1/order/cancel"
         payload = {
             "request": endpoint,
             "nonce": get_nonce(),
             "order_id": order_id
         }
-        response = self._make_request(endpoint, payload)
+        response = await self._make_request(endpoint, payload)
         return parse_response(response, CancelOrderResponse) 

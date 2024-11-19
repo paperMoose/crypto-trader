@@ -2,3 +2,5 @@ requests
 pytest
 python-dotenv==1.0.0
 sqlmodel
+aiohttp==3.11.3
+pytest-asyncio==0.24.0

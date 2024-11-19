@@ -51,9 +51,16 @@ class ActiveOrdersResponse(BaseModel):
     def from_response(cls, response: List[dict]):
         return cls(orders=[OrderResponse(**order) for order in response])
 
-class CancelOrderResponse(OrderResponse):
-    cancelled: bool
-    reason: Optional[str] = None
+class CancelOrderResponse(BaseModel):
+    order_id: str
+    cancelled: bool = True
+    original_amount: str
+    executed_amount: str
+    remaining_amount: str | None = None
+
+    @property
+    def is_cancelled(self) -> bool:
+        return self.cancelled
 
 class ErrorResponse(BaseModel):
     result: str
