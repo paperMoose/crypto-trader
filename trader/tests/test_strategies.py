@@ -294,6 +294,143 @@ async def test_breakout_strategy_take_profit_orders(session, mock_gemini_client,
     assert tp2_call['price'] == breakout_strategy_data['config']['take_profit_2']
     assert tp2_call['amount'] == str(float(breakout_strategy_data['config']['amount']) / 2)
 
+@pytest.mark.asyncio
+async def test_breakout_strategy_price_validation(session, mock_gemini_client, breakout_strategy_data):
+    """Test that breakout strategy validates price levels before placing orders"""
+    strategy = BreakoutStrategy(mock_gemini_client)
+    
+    # Create strategy instance
+    db_strategy = save_strategy(breakout_strategy_data, session)
+    session.refresh(db_strategy)  # Ensure strategy is attached to session
+    
+    breakout_price = float(breakout_strategy_data['config']['breakout_price'])
+    test_cases = [
+        {
+            "current_price": str(breakout_price * 0.996),  # Within 0.5% below breakout
+            "should_place_order": True,
+            "description": "Price near breakout level",
+            "order_id": "test_order_1"
+        },
+        {
+            "current_price": str(breakout_price * 0.99),  # Too far below breakout
+            "should_place_order": False,
+            "description": "Price too far below breakout",
+            "order_id": "test_order_2"
+        },
+        {
+            "current_price": str(breakout_price * 1.001),  # Just above breakout
+            "should_place_order": True,
+            "description": "Price above breakout",
+            "order_id": "test_order_3"
+        }
+    ]
+    
+    for case in test_cases:
+        # Reset database state
+        session.query(Order).filter(Order.strategy_id == db_strategy.id).delete()
+        session.commit()
+        session.refresh(db_strategy)
+        
+        # Reset mock and set current price
+        mock_gemini_client.reset_mock()
+        mock_gemini_client.get_price.return_value = case["current_price"]
+        
+        # Configure mock response for order placement
+        mock_response = Mock()
+        mock_response.order_id = case["order_id"]
+        mock_gemini_client.place_order.return_value = mock_response
+        
+        # Configure mock for order status check
+        mock_status_response = Mock()
+        mock_status_response.status = OrderState.ACCEPTED
+        mock_gemini_client.check_order_status.return_value = mock_status_response
+        
+        # Execute strategy
+        await strategy.execute(db_strategy, session)
+        session.refresh(db_strategy)  # Refresh strategy after execution
+        
+        # Verify order placement behavior
+        if case["should_place_order"]:
+            assert mock_gemini_client.place_order.called, f"Failed on: {case['description']}"
+            call_args = mock_gemini_client.place_order.call_args[1]
+            assert call_args['price'] == breakout_strategy_data['config']['breakout_price']
+            
+            # Verify order was saved
+            orders = session.query(Order).filter(
+                Order.strategy_id == db_strategy.id,
+                Order.order_id == case["order_id"]
+            ).all()
+            assert len(orders) == 1
+            order = orders[0]
+            assert order.side == OrderSide.BUY.value
+            assert order.price == breakout_strategy_data['config']['breakout_price']
+        else:
+            assert not mock_gemini_client.place_order.called, f"Should not place order: {case['description']}"
+            orders = session.query(Order).filter(Order.strategy_id == db_strategy.id).all()
+            assert len(orders) == 0
+
+@pytest.mark.asyncio
+async def test_breakout_strategy_prevents_premature_execution(session, mock_gemini_client, breakout_strategy_data):
+    """Test that breakout strategy doesn't execute prematurely"""
+    strategy = BreakoutStrategy(mock_gemini_client)
+    db_strategy = save_strategy(breakout_strategy_data, session)
+    session.refresh(db_strategy)  # Ensure strategy is attached to session
+    
+    # Set current price well below breakout level
+    mock_gemini_client.get_price.return_value = "0.30000"  # Well below breakout price
+    
+    # Configure mock response for order status check
+    mock_status_response = Mock()
+    mock_status_response.status = OrderState.ACCEPTED
+    mock_gemini_client.check_order_status.return_value = mock_status_response
+    
+    # Execute strategy
+    await strategy.execute(db_strategy, session)
+    session.refresh(db_strategy)  # Refresh after execution
+    
+    # Verify no orders were placed
+    assert not mock_gemini_client.place_order.called
+    assert len(db_strategy.orders) == 0
+
+@pytest.mark.asyncio
+async def test_breakout_strategy_price_monitoring(session, mock_gemini_client, breakout_strategy_data):
+    """Test that breakout strategy properly monitors price levels"""
+    strategy = BreakoutStrategy(mock_gemini_client)
+    db_strategy = save_strategy(breakout_strategy_data, session)
+    session.refresh(db_strategy)  # Ensure strategy is attached to session
+    
+    # Simulate price approaching breakout level
+    price_sequence = [
+        "0.30000",  # Too far - no order
+        "0.34800",  # Within range - should place order
+        "0.35500",  # Above breakout - should maintain order
+    ]
+    
+    for current_price in price_sequence:
+        mock_gemini_client.reset_mock()
+        mock_gemini_client.get_price.return_value = current_price
+        
+        # Configure mock response for order placement
+        mock_response = Mock()
+        mock_response.order_id = "test_order_123"
+        mock_gemini_client.place_order.return_value = mock_response
+        
+        # Configure mock for order status check
+        mock_status_response = Mock()
+        mock_status_response.status = OrderState.ACCEPTED
+        mock_gemini_client.check_order_status.return_value = mock_status_response
+        
+        # Execute strategy
+        await strategy.execute(db_strategy, session)
+        session.refresh(db_strategy)  # Refresh after execution
+        
+        # Verify behavior based on price
+        breakout_threshold = float(breakout_strategy_data['config']['breakout_price']) * 0.995
+        if float(current_price) >= breakout_threshold:
+            assert mock_gemini_client.place_order.called or len(db_strategy.orders) > 0
+        else:
+            assert not mock_gemini_client.place_order.called
+
 # Strategy Manager Tests
 @pytest.mark.asyncio
 async def test_strategy_manager_create_strategy(session, mock_gemini_client, range_strategy_data):

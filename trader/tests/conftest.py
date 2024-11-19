@@ -9,15 +9,17 @@ from trader.models import StrategyType
 from sqlalchemy.engine import create_engine
 from sqlalchemy_utils import database_exists, create_database, drop_database
 from trader.database import init_db
+import trader.config as config
 
 TEST_DATABASE_URL = "postgresql://gemini_bot:gemini_bot_password@localhost:5433/gemini_bot_test"
 
-@pytest.fixture(autouse=True)
-def check_credentials():
-    """Skip live tests if credentials are not available"""
-    load_dotenv()
-    if not (os.getenv("GEMINI_API_KEY") and os.getenv("GEMINI_API_SECRET")):
-        pytest.skip("Gemini API credentials not found in environment") 
+@pytest.fixture(scope="session", autouse=True)
+def override_database_url():
+    """Override the database URL for tests"""
+    original_url = config.DATABASE_URL
+    config.DATABASE_URL = TEST_DATABASE_URL
+    yield
+    config.DATABASE_URL = original_url
 
 @pytest.fixture(scope="session")
 def engine():
