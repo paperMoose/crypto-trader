@@ -274,7 +274,7 @@ async def test_strategy_manager_update_orders(session, mock_gemini_client):
         'Response', (), {'order_id': 'test_order_123', 'status': OrderState.FILLED.value}
     )
     
-    await manager.update_orders(strategy, session)
+    await manager.update_orders(strategy)
     session.refresh(order)  # Refresh from DB
     
     assert order.status == OrderState.FILLED
@@ -289,7 +289,7 @@ async def test_strategy_manager_monitor_strategies(session, mock_gemini_client, 
     async def mock_monitor(self):  # Add self parameter
         strategies = [strategy]
         for s in strategies:
-            await manager.update_orders(s, session)
+            await manager.update_orders(s)
             await manager.strategies[s.type].execute(s, session)
     
     # Configure place_order mock
@@ -407,7 +407,7 @@ async def test_strategy_manager_full_cycle(session, mock_gemini_client, range_st
                 session.commit()
                 
                 # Update orders and execute strategy
-                await manager.update_orders(s, session)
+                await manager.update_orders(s)
                 await manager.strategies[s.type].execute(s, session)
                 
                 # Update last_checked_at

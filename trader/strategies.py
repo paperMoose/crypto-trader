@@ -206,6 +206,7 @@ class StrategyManager:
                         # Update last checked timestamp
                         update_strategy(
                             strategy.id,
+                            session=self.session,
                             engine=self.session.get_bind(),
                             last_checked_at=datetime.utcnow()
                         )
@@ -217,12 +218,12 @@ class StrategyManager:
                 logger.error(f"Error monitoring strategies: {str(e)}")
                 await asyncio.sleep(5)  # Back off on error
     
-    async def update_orders(self, strategy, session):
+    async def update_orders(self, strategy):
         for order in strategy.orders:
             response = await self.client.check_order_status(order.order_id)
             if response.status != order.status:
                 order_data = {
                     "status": response.status
                 }
-                update_order(order.order_id, session=session, **order_data)
-        session.commit()
+                update_order(order.order_id, session=self.session, engine=self.session.get_bind(), **order_data)
+        self.session.commit()
