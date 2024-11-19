@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime
-from trader.client import OrderSide, OrderType, Symbol
+from trader.gemini.client import OrderSide, OrderType, Symbol
 
 class Order(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

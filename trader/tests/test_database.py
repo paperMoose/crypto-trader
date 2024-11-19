@@ -11,7 +11,7 @@ from trader.database import (
     delete_order,
     init_db
 )
-from trader.client import OrderSide, OrderType, Symbol
+from trader.gemini.client import OrderSide, OrderType, Symbol
 from datetime import datetime
 
 @pytest.fixture(name="engine")

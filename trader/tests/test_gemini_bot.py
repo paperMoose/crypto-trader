@@ -1,8 +1,10 @@
 import pytest
 import os
 import json
+from trader.gemini.schemas import ActiveOrdersResponse, OrderResponse
 from trader.gemini_bot import check_order_status
-from trader.client import GeminiClient, Symbol, OrderSide, OrderType
+from trader.gemini.client import GeminiClient
+from trader.gemini.enums import OrderSide, OrderType, Symbol
 import logging
 
 # Fixture for mock data
@@ -42,8 +44,6 @@ def mock_env_vars():
     if original_api_secret:
         os.environ["GEMINI_API_SECRET"] = original_api_secret
 
-
-
 # Test checking order status with mock
 def test_check_order_status(mock_client):
     order_id = "123"
@@ -66,19 +66,19 @@ def test_gemini_client_integration():
     try:
         response = client.get_active_orders()
         
-        assert isinstance(response, list), "Response should be a list of orders"
+        assert isinstance(response, ActiveOrdersResponse)
         
         # If there are any orders, verify their structure
-        for order in response:
-            assert "order_id" in order
-            assert "symbol" in order
-            assert "executed_amount" in order
-            assert "original_amount" in order
-            assert "price" in order
-            assert "side" in order
-            assert order["side"] in [side.value for side in OrderSide]
+        for order in response.orders:
+            assert isinstance(order, OrderResponse)
+            assert order.order_id is not None
+            assert order.symbol is not None
+            assert order.executed_amount is not None
+            assert order.original_amount is not None
+            assert order.price is not None
+            assert order.side in [side.value for side in OrderSide]
             
-        logging.info(f"Found {len(response)} active orders")
+        logging.info(f"Found {len(response.orders)} active orders")
             
     except Exception as e:
         pytest.fail(f"Integration test failed: {str(e)}")

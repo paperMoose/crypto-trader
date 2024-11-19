@@ -1,6 +1,6 @@
 import pytest
 import logging
-from trader.client import GeminiClient, Symbol, OrderSide, OrderType
+from trader.gemini.client import GeminiClient, Symbol, OrderSide, OrderType
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

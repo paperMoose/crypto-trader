@@ -1,5 +1,5 @@
 import logging
-from trader.client import GeminiClient, Symbol, OrderSide, OrderType
+from trader.gemini.client import GeminiClient, Symbol, OrderSide, OrderType
 from trader.database import (
     get_open_buy_orders,
     save_order,
