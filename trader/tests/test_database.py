@@ -121,7 +121,7 @@ def test_update_order(engine, session, sample_order_data):
     import time
     time.sleep(0.1)
     
-    updated = update_order(order.order_id, engine=engine, status="filled")
+    updated = update_order(order.order_id, engine=engine, session=session, status="filled")
     assert updated.status == "filled"
     assert updated.updated_at > original_updated_at
 
