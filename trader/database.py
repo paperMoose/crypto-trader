@@ -33,7 +33,7 @@ def get_open_buy_orders(engine=None) -> List[Order]:
         statement = select(Order).where(
             and_(
                 Order.side == "buy",
-                Order.status.in_([OrderState.PENDING.value, OrderState.PLACED.value])
+                Order.status.in_([OrderState.PLACED.value])
             )
         )
         return session.exec(statement).all()
@@ -73,10 +73,15 @@ def save_order(order_data: Dict[str, Any], session: Optional[Session] = None, en
         if local_session:
             session.close()
 
-def update_order(order_id: str, engine=None, **updates) -> Optional[Order]:
+def update_order(order_id: str, session: Optional[Session] = None, engine: Optional[Engine] = None, **updates) -> Optional[Order]:
     """Update an existing order in the database"""
-    engine = engine or default_engine
-    with Session(engine) as session:
+    local_session = False
+    if session is None:
+        engine = engine or default_engine
+        session = Session(engine)
+        local_session = True
+
+    try:
         statement = select(Order).where(Order.order_id == order_id)
         order = session.exec(statement).first()
         if order:
@@ -84,10 +89,13 @@ def update_order(order_id: str, engine=None, **updates) -> Optional[Order]:
                 setattr(order, key, value)
             order.updated_at = datetime.utcnow()
             session.add(order)
-            session.commit()
-            session.refresh(order)
+            if local_session:
+                session.commit()
             return order
-    return None
+        return None
+    finally:
+        if local_session:
+            session.close()
 
 def get_order_by_id(order_id: str, engine=None) -> Optional[Order]:
     """Get a specific order by its order_id"""

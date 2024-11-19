@@ -39,7 +39,7 @@ class TradingStrategy(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_checked_at: datetime = Field(default_factory=datetime.utcnow)
-    check_interval: int = Field(default=60)
+    check_interval: int = Field(default=1)
     
     orders: List["Order"] = Relationship(back_populates="strategy")
 

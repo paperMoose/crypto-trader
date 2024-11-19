@@ -1,10 +1,12 @@
 import pytest
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
+from sqlmodel import Session, select
 from trader.strategies import RangeStrategy, BreakoutStrategy, StrategyManager, BaseStrategy
 from trader.models import Order, OrderState, OrderType, StrategyType, StrategyState, TradingStrategy
-from trader.gemini.enums import Symbol, OrderSide, OrderType as GeminiOrderType
-from trader.database import get_active_strategies, save_strategy, save_order
+from trader.gemini.enums import OrderSide, OrderType as GeminiOrderType
+from trader.database import save_strategy, save_order, update_order
+from datetime import datetime, timedelta
+
 
 # Test Data Fixtures
 @pytest.fixture
@@ -250,11 +252,11 @@ async def test_strategy_manager_update_orders(session, mock_gemini_client):
         type=StrategyType.RANGE,
         symbol="dogeusd",
         state=StrategyState.ACTIVE.value,
-        check_interval=60
+        check_interval=10
     )
-    session.add(strategy)
-    session.commit()
+    strategy = save_strategy(strategy.model_dump(), session)
     
+    # Create initial order
     order = Order(
         order_id="test_order_123",
         status=OrderState.PLACED,
@@ -265,15 +267,14 @@ async def test_strategy_manager_update_orders(session, mock_gemini_client):
         order_type=OrderType.LIMIT_BUY,
         strategy_id=strategy.id
     )
-    session.add(order)
-    session.commit()
+    order = save_order(order.model_dump(), session)
     
     # Mock the order status response
     mock_gemini_client.check_order_status.return_value = type(
-        'Response', (), {'status': 'filled'}  # Use string value instead of enum
+        'Response', (), {'order_id': 'test_order_123', 'status': OrderState.FILLED.value}
     )
     
-    await manager.update_orders(strategy)
+    await manager.update_orders(strategy, session)
     session.refresh(order)  # Refresh from DB
     
     assert order.status == OrderState.FILLED
@@ -288,7 +289,7 @@ async def test_strategy_manager_monitor_strategies(session, mock_gemini_client, 
     async def mock_monitor(self):  # Add self parameter
         strategies = [strategy]
         for s in strategies:
-            await manager.update_orders(s)
+            await manager.update_orders(s, session)
             await manager.strategies[s.type].execute(s, session)
     
     # Configure place_order mock
@@ -300,3 +301,147 @@ async def test_strategy_manager_monitor_strategies(session, mock_gemini_client, 
     with patch.object(StrategyManager, 'monitor_strategies', mock_monitor):
         await manager.monitor_strategies()
         assert mock_gemini_client.place_order.call_count == 2
+
+@pytest.mark.asyncio
+async def test_strategy_manager_full_cycle(session, mock_gemini_client, range_strategy_data, breakout_strategy_data):
+    """Test strategy manager monitoring multiple strategies through complete trading cycles"""
+    manager = StrategyManager(session, mock_gemini_client)
+    
+    # Create both types of strategies with old last_checked_at to ensure execution
+    past_time = datetime.utcnow() - timedelta(minutes=5)
+    range_strategy_data['last_checked_at'] = past_time
+    breakout_strategy_data['last_checked_at'] = past_time
+    
+    range_strategy = await manager.create_strategy(range_strategy_data)
+    breakout_strategy = await manager.create_strategy(breakout_strategy_data)
+    
+    # Configure mock responses for different cycles
+    cycle_responses = {
+        # Cycle 1: Initial order placement
+        1: {
+            'place_order': [
+                # Range strategy buy and sell orders
+                type('Response', (), {'order_id': 'range_buy_123'}),
+                type('Response', (), {'order_id': 'range_sell_123'}),
+                # Breakout strategy initial stop order
+                type('Response', (), {'order_id': 'breakout_buy_123'})
+            ],
+            'get_orders': [],
+            'check_order_status': [
+                type('Response', (), {'order_id': 'range_buy_123', 'status': OrderState.PLACED.value}),
+                type('Response', (), {'order_id': 'range_sell_123', 'status': OrderState.PLACED.value}),
+                type('Response', (), {'order_id': 'breakout_buy_123', 'status': OrderState.PLACED.value})
+            ]
+        },
+        # Cycle 2: Range buy order fills
+        2: {
+            'place_order': [],
+            'get_orders': [
+                type('Response', (), {'order_id': 'range_buy_123', 'is_live': False}),
+                type('Response', (), {'order_id': 'range_sell_123', 'is_live': True}),
+                type('Response', (), {'order_id': 'breakout_buy_123', 'is_live': True})
+            ],
+            'check_order_status': [
+                type('Response', (), {'order_id': 'range_buy_123', 'status': OrderState.FILLED.value}),
+                type('Response', (), {'order_id': 'range_sell_123', 'status': OrderState.ACTIVE.value}),
+                type('Response', (), {'order_id': 'breakout_buy_123', 'status': OrderState.ACTIVE.value})
+            ]
+        },
+        # Cycle 3: Breakout buy order fills
+        3: {
+            'place_order': [
+                # Breakout take profit and stop loss orders
+                type('Response', (), {'order_id': 'breakout_tp1_123'}),
+                type('Response', (), {'order_id': 'breakout_tp2_123'}),
+                type('Response', (), {'order_id': 'breakout_sl_123'})
+            ],
+            'get_orders': [
+                type('Response', (), {'order_id': 'range_sell_123', 'is_live': True}),
+                type('Response', (), {'order_id': 'breakout_buy_123', 'is_live': False})
+            ],
+            'check_order_status': [
+                type('Response', (), {'order_id': 'range_sell_123', 'status': OrderState.ACTIVE.value}),
+                type('Response', (), {'order_id': 'breakout_buy_123', 'status': OrderState.FILLED.value}),
+                type('Response', (), {'order_id': 'breakout_tp1_123', 'status': OrderState.PLACED.value}),
+                type('Response', (), {'order_id': 'breakout_tp2_123', 'status': OrderState.PLACED.value}),
+                type('Response', (), {'order_id': 'breakout_sl_123', 'status': OrderState.PLACED.value})
+            ]
+        },
+        # Cycle 4: Take profit orders fill
+        4: {
+            'place_order': [],
+            'get_orders': [
+                type('Response', (), {'order_id': 'range_sell_123', 'is_live': True}),
+                type('Response', (), {'order_id': 'breakout_tp1_123', 'is_live': False}),
+                type('Response', (), {'order_id': 'breakout_tp2_123', 'is_live': False}),
+                type('Response', (), {'order_id': 'breakout_sl_123', 'is_live': False})
+            ],
+            'check_order_status': [
+                type('Response', (), {'order_id': 'range_sell_123', 'status': OrderState.ACTIVE.value}),
+                type('Response', (), {'order_id': 'breakout_tp1_123', 'status': OrderState.FILLED.value}),
+                type('Response', (), {'order_id': 'breakout_tp2_123', 'status': OrderState.FILLED.value}),
+                type('Response', (), {'order_id': 'breakout_sl_123', 'status': OrderState.CANCELLED.value})
+            ]
+        }
+    }
+    
+    current_cycle = 1
+    
+    async def mock_monitor(self):
+        nonlocal current_cycle
+        if current_cycle <= 4:  # Run 4 cycles
+            # Configure mock responses for current cycle
+            cycle = cycle_responses[current_cycle]
+            mock_gemini_client.place_order.side_effect = cycle['place_order']
+            mock_gemini_client.get_orders.return_value = cycle['get_orders']
+            mock_gemini_client.check_order_status.side_effect = cycle['check_order_status']
+            
+            # Get fresh instances of strategies
+            statement = select(TradingStrategy).where(TradingStrategy.is_active == True)
+            strategies = session.exec(statement).all()
+            
+            for s in strategies:
+                # Force last_checked_at to be old enough to trigger execution
+                s.last_checked_at = datetime.utcnow() - timedelta(minutes=5)
+                session.add(s)
+                session.commit()
+                
+                # Update orders and execute strategy
+                await manager.update_orders(s, session)
+                await manager.strategies[s.type].execute(s, session)
+                
+                # Update last_checked_at
+                s.last_checked_at = datetime.utcnow()
+                session.add(s)
+                session.commit()
+            
+            current_cycle += 1
+    
+    # Run the monitor cycles
+    with patch.object(StrategyManager, 'monitor_strategies', mock_monitor):
+        await manager.monitor_strategies()
+    
+    session.refresh(range_strategy)
+    session.refresh(breakout_strategy)
+    
+    # Verify range strategy state
+    range_orders = range_strategy.orders
+    assert len(range_orders) == 2
+    range_buy = next(o for o in range_orders if o.side == OrderSide.BUY.value)
+    assert range_buy.status == OrderState.FILLED
+    range_sell = next(o for o in range_orders if o.side == OrderSide.SELL.value)
+    assert range_sell.status == OrderState.ACTIVE
+    
+    # Verify breakout strategy state
+    breakout_orders = breakout_strategy.orders
+    assert len(breakout_orders) == 4  # Initial buy + 2 TPs + 1 SL
+    breakout_buy = next(o for o in breakout_orders if o.order_type == OrderType.STOP_LIMIT_BUY)
+    assert breakout_buy.status == OrderState.FILLED
+    
+    take_profits = [o for o in breakout_orders if o.order_type == OrderType.LIMIT_SELL and o.price in 
+                   [breakout_strategy_data['config']['take_profit_1'], breakout_strategy_data['config']['take_profit_2']]]
+    assert len(take_profits) == 2
+    assert all(tp.status == OrderState.FILLED for tp in take_profits)
+    
+    stop_loss = next(o for o in breakout_orders if o.price == breakout_strategy_data['config']['stop_loss'])
+    assert stop_loss.status == OrderState.CANCELLED

@@ -11,7 +11,8 @@ from trader.database import (
     save_strategy, 
     get_active_strategies, 
     update_strategy,
-    save_order
+    save_order,
+    update_order
 )
 
 logger = logging.getLogger(__name__)
@@ -188,6 +189,7 @@ class StrategyManager:
     async def create_strategy(self, strategy_data: Dict[str, Any]) -> TradingStrategy:
         """Create and save a new trading strategy"""
         strategy = save_strategy(strategy_data, session=self.session)
+        self.session.commit()
         return strategy
     
     async def monitor_strategies(self):
@@ -198,7 +200,7 @@ class StrategyManager:
                 
                 for strategy in strategies:
                     if (datetime.utcnow() - strategy.last_checked_at).seconds >= strategy.check_interval:
-                        await self.update_orders(strategy)
+                        await self.update_orders(strategy, self.session.get_bind())
                         await self.strategies[strategy.type].execute(strategy, self.session)
                         
                         # Update last checked timestamp
@@ -207,20 +209,20 @@ class StrategyManager:
                             engine=self.session.get_bind(),
                             last_checked_at=datetime.utcnow()
                         )
-                
+                        self.session.commit()
+
                 await asyncio.sleep(1)  # Prevent tight loop
                 
             except Exception as e:
                 logger.error(f"Error monitoring strategies: {str(e)}")
                 await asyncio.sleep(5)  # Back off on error
     
-    async def update_orders(self, strategy: TradingStrategy):
-        """Update status of all orders in strategy"""
+    async def update_orders(self, strategy, session):
         for order in strategy.orders:
-            if order.status not in [OrderState.FILLED, OrderState.CANCELLED]:
-                status = await self.client.check_order_status(order.order_id)
-                if status.status != order.status:
-                    order.status = OrderState(status.status)
-                    order.updated_at = datetime.utcnow()
-                    self.session.add(order)
-        self.session.commit() 
+            response = await self.client.check_order_status(order.order_id)
+            if response.status != order.status:
+                order_data = {
+                    "status": response.status
+                }
+                update_order(order.order_id, session=session, **order_data)
+        session.commit()

@@ -1,68 +1,39 @@
 import pytest
 import os
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import AsyncMock
 from dotenv import load_dotenv
 from sqlmodel import Session, SQLModel, create_engine
-from trader.gemini.client import GeminiClient
-from trader.models import OrderState
 from trader.gemini.enums import Symbol
-from trader.models import StrategyType
 from sqlalchemy.pool import StaticPool
-from sqlalchemy import event
+from trader.models import StrategyType
 
-TEST_DB = "test.db"
 
-def remove_test_db():
-    """Remove the test database file if it exists"""
-    if os.path.exists(TEST_DB):
-        os.remove(TEST_DB)
+@pytest.fixture(autouse=True)
+def check_credentials():
+    """Skip live tests if credentials are not available"""
+    load_dotenv()
+    if not (os.getenv("GEMINI_API_KEY") and os.getenv("GEMINI_API_SECRET")):
+        pytest.skip("Gemini API credentials not found in environment") 
 
-@pytest.fixture(scope="session", autouse=True)
-def setup_test_db():
-    """Setup test database before any tests run and cleanup after"""
-    remove_test_db()
-    yield
-    remove_test_db()
-
-@pytest.fixture(scope="session")
+@pytest.fixture
 def engine():
-    """Create a test database engine that persists across all tests"""
-    # Use file-based SQLite for better debugging
+    """Create a new in-memory database for each test"""
+    from trader.models import SQLModel, Order, TradingStrategy
+    
     engine = create_engine(
-        f"sqlite:///{TEST_DB}",
+        "sqlite://",  # In-memory database
         connect_args={"check_same_thread": False},
         poolclass=StaticPool
     )
     SQLModel.metadata.create_all(engine)
     return engine
 
-@pytest.fixture(scope="function")
-def connection(engine):
-    """Create a test connection with transaction rollback"""
-    connection = engine.connect()
-    # Begin a non-ORM transaction
-    trans = connection.begin()
-    
-    yield connection
-    
-    # Rollback the transaction after the test
-    trans.rollback()
-    connection.close()
-
-@pytest.fixture(scope="function")
-def session(connection):
-    """Create a new session for a test with automatic rollback"""
-    # Begin a nested transaction
-    transaction = connection.begin_nested()
-    
-    # Create session bound to the connection
-    session = Session(bind=connection)
-    
-    yield session
-    
-    # Close and rollback the session after the test
-    session.close()
-    transaction.rollback()
+@pytest.fixture
+def session(engine):
+    """Create a new database session for each test"""
+    with Session(engine) as session:
+        yield session
+        session.rollback() 
 
 @pytest.fixture(scope="function")
 def mock_gemini_client():
