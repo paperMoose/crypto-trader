@@ -22,10 +22,11 @@ class StrategyState(str, Enum):
     FAILED = "failed"
 
 class OrderState(str, Enum):
-    PLACED = "placed"
-    ACTIVE = "active"
-    FILLED = "filled"
+    ACCEPTED = "accepted"
+    LIVE = "live"
     CANCELLED = "cancelled"
+    FILLED = "filled"
+    PARTIAL_FILL = "partial_fill"
     REJECTED = "rejected"
 
 class TradingStrategy(SQLModel, table=True):

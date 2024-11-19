@@ -63,7 +63,7 @@ class RangeStrategy(BaseStrategy):
             
             order = Order(
                 order_id=response.order_id,
-                status=OrderState.PLACED,
+                status=OrderState.ACCEPTED,
                 amount=config['amount'],
                 price=config['support_price'],
                 side=OrderSide.BUY.value,
@@ -73,7 +73,7 @@ class RangeStrategy(BaseStrategy):
             )
             session.add(order)
             session.commit()
-            logger.info(f"Buy order placed successfully: {order.order_id}")
+            logger.info(f"Buy order ACCEPTED successfully: {order.order_id}")
             return
         
         # If buy order is filled, place sell and stop loss orders
@@ -91,7 +91,7 @@ class RangeStrategy(BaseStrategy):
                 
                 order = Order(
                     order_id=response.order_id,
-                    status=OrderState.PLACED,
+                    status=OrderState.ACCEPTED,
                     amount=config['amount'],
                     price=config['resistance_price'],
                     side=OrderSide.SELL.value,
@@ -100,7 +100,7 @@ class RangeStrategy(BaseStrategy):
                     strategy_id=strategy.id
                 )
                 session.add(order)
-                logger.info(f"Sell order placed successfully: {order.order_id}")
+                logger.info(f"Sell order ACCEPTED successfully: {order.order_id}")
             
             # Place stop loss order if none exists
             if not stop_loss_order:
@@ -116,7 +116,7 @@ class RangeStrategy(BaseStrategy):
                 
                 order = Order(
                     order_id=response.order_id,
-                    status=OrderState.PLACED,
+                    status=OrderState.ACCEPTED,
                     amount=config['amount'],
                     price=config['stop_loss_price'],
                     side=OrderSide.SELL.value,
@@ -126,7 +126,7 @@ class RangeStrategy(BaseStrategy):
                     stop_price=str(float(config['stop_loss_price']) * 1.01)
                 )
                 session.add(order)
-                logger.info(f"Stop loss order placed successfully: {order.order_id}")
+                logger.info(f"Stop loss order ACCEPTED successfully: {order.order_id}")
         
         session.commit()
 
@@ -150,18 +150,17 @@ class BreakoutStrategy(BaseStrategy):
                 amount=config['amount'],
                 price=config['breakout_price'],
                 side=OrderSide.BUY,
-                order_type=GeminiOrderType.EXCHANGE_STOP_LIMIT,
-                stop_price=str(float(config['breakout_price']) * 0.99)
+                order_type=GeminiOrderType.EXCHANGE_LIMIT
             )
             
             buy_order = Order(
                 order_id=response.order_id,
-                status=OrderState.PLACED,
+                status=OrderState.ACCEPTED,
                 amount=config['amount'],
                 price=config['breakout_price'],
                 side=OrderSide.BUY.value,
                 symbol=strategy.symbol,
-                order_type=OrderType.STOP_LIMIT_BUY,
+                order_type=OrderType.LIMIT_BUY,
                 strategy_id=strategy.id
             )
             session.add(buy_order)
@@ -169,44 +168,88 @@ class BreakoutStrategy(BaseStrategy):
             return
         
         # If buy order is filled, place take profit and stop loss orders
-        if buy_order.status == OrderState.FILLED:
-            sell_orders = [o for o in strategy.orders if o.side == OrderSide.SELL.value]
-            if not sell_orders:  # Only place sell orders if none exist
-                # Place take profit orders
-                for tp_price in [config['take_profit_1'], config['take_profit_2']]:
-                    response = await self.client.place_order(
-                        symbol=Symbol(strategy.symbol),
-                        amount=str(float(config['amount']) / 2),  # Split amount between take profits
-                        price=tp_price,
-                        side=OrderSide.SELL,
-                        order_type=GeminiOrderType.EXCHANGE_LIMIT
-                    )
-                    
-                    order = Order(
-                        order_id=response.order_id,
-                        status=OrderState.PLACED,
-                        amount=str(float(config['amount']) / 2),
-                        price=tp_price,
-                        side=OrderSide.SELL.value,
-                        symbol=strategy.symbol,
-                        order_type=OrderType.LIMIT_SELL,
-                        strategy_id=strategy.id
-                    )
-                    session.add(order)
+        if buy_order.status.value == "filled":
+            logger.info(f"Buy order {buy_order.order_id} is filled, checking for take profit and stop loss orders")
+            
+            # Check for take profit orders
+            tp1_order = next((o for o in strategy.orders 
+                            if o.side == OrderSide.SELL.value 
+                            and float(o.price) == float(config['take_profit_1'])
+                            and o.order_type == OrderType.LIMIT_SELL), None)
+            tp2_order = next((o for o in strategy.orders 
+                            if o.side == OrderSide.SELL.value 
+                            and float(o.price) == float(config['take_profit_2'])
+                            and o.order_type == OrderType.LIMIT_SELL), None)
+            stop_loss_order = next((o for o in strategy.orders 
+                                  if o.side == OrderSide.SELL.value
+                                  and float(o.price) == float(config['stop_loss'])
+                                  and o.order_type == OrderType.STOP_LIMIT_SELL), None)
+            
+            logger.debug(f"Found existing orders - TP1: {tp1_order and tp1_order.order_id}, "
+                        f"TP2: {tp2_order and tp2_order.order_id}, "
+                        f"Stop Loss: {stop_loss_order and stop_loss_order.order_id}")
+            
+            # Place take profit 1 if it doesn't exist
+            if not tp1_order:
+                logger.info(f"Placing take profit 1 order at {config['take_profit_1']}")
+                response = await self.client.place_order(
+                    symbol=Symbol(strategy.symbol),
+                    amount=str(float(config['amount']) / 2),
+                    price=config['take_profit_1'],
+                    side=OrderSide.SELL,
+                    order_type=GeminiOrderType.EXCHANGE_LIMIT
+                )
                 
-                # Place stop loss order
+                order = Order(
+                    order_id=response.order_id,
+                    status=OrderState.ACCEPTED,
+                    amount=str(float(config['amount']) / 2),
+                    price=config['take_profit_1'],
+                    side=OrderSide.SELL.value,
+                    symbol=strategy.symbol,
+                    order_type=OrderType.LIMIT_SELL,
+                    strategy_id=strategy.id
+                )
+                session.add(order)
+            
+            # Place take profit 2 if it doesn't exist
+            if not tp2_order:
+                logger.info(f"Placing take profit 2 order at {config['take_profit_2']}")
+                response = await self.client.place_order(
+                    symbol=Symbol(strategy.symbol),
+                    amount=str(float(config['amount']) / 2),
+                    price=config['take_profit_2'],
+                    side=OrderSide.SELL,
+                    order_type=GeminiOrderType.EXCHANGE_LIMIT
+                )
+                
+                order = Order(
+                    order_id=response.order_id,
+                    status=OrderState.ACCEPTED,
+                    amount=str(float(config['amount']) / 2),
+                    price=config['take_profit_2'],
+                    side=OrderSide.SELL.value,
+                    symbol=strategy.symbol,
+                    order_type=OrderType.LIMIT_SELL,
+                    strategy_id=strategy.id
+                )
+                session.add(order)
+            
+            # Place stop loss if it doesn't exist
+            if not stop_loss_order:
+                logger.info(f"Placing stop loss order at {config['stop_loss']}")
                 response = await self.client.place_order(
                     symbol=Symbol(strategy.symbol),
                     amount=config['amount'],
                     price=config['stop_loss'],
                     side=OrderSide.SELL,
                     order_type=GeminiOrderType.EXCHANGE_STOP_LIMIT,
-                    stop_price=str(float(config['stop_loss']) * 1.01)
+                    stop_price=str(float(config['stop_loss']) * 1.01)  # Trigger slightly above stop price
                 )
                 
                 order = Order(
                     order_id=response.order_id,
-                    status=OrderState.PLACED,
+                    status=OrderState.ACCEPTED,
                     amount=config['amount'],
                     price=config['stop_loss'],
                     side=OrderSide.SELL.value,
@@ -216,7 +259,8 @@ class BreakoutStrategy(BaseStrategy):
                     stop_price=str(float(config['stop_loss']) * 1.01)
                 )
                 session.add(order)
-                session.commit()
+            
+            session.commit()
 
 class StrategyManager:
     def __init__(self, session: Session, client: GeminiClient):
@@ -281,14 +325,23 @@ class StrategyManager:
                 if hasattr(response, 'status') and response.status is not None:
                     old_status = order.status
                     order_data = {
-                        "status": response.status
+                        "status": response.status,
+                        "amount": response.original_amount,
+                        "price": response.price,
+                        "side": response.side,
+                        "symbol": response.symbol,
                     }
+                    
+                    # Add stop_price if it exists in the response
+                    if hasattr(response, 'stop_price') and response.stop_price is not None:
+                        order_data["stop_price"] = response.stop_price
+                    
                     update_order(
                         order.order_id, 
                         session=self.session, 
                         **order_data
                     )
-                    logger.info(f"Order {order.order_id} status updated: {old_status} -> {response.status}")
+                    logger.info(f"Order {order.order_id} updated - Status: {old_status} -> {response.status}")
             
             # Only commit if all updates were successful
             self.session.commit()

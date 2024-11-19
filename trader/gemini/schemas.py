@@ -8,6 +8,7 @@ class OrderStatus(str, Enum):
     LIVE = "live"
     CANCELLED = "cancelled"
     FILLED = "filled"
+    PARTIAL_FILL = "partial_fill"
     REJECTED = "rejected"
 
 class OrderResponse(BaseModel):
@@ -34,12 +35,27 @@ class OrderResponse(BaseModel):
     status: OrderStatus | None = None
 
     def model_post_init(self, __context) -> None:
-        """Calculate remaining_amount if not provided"""
+        """Calculate remaining_amount and set status based on order state"""
+        # Calculate remaining amount if not provided
         if self.remaining_amount is None:
-            # Convert to float for calculation, then back to string
             executed = float(self.executed_amount)
             original = float(self.original_amount)
             self.remaining_amount = str(original - executed)
+
+        # Set status based on order state
+        if self.is_cancelled:
+            self.status = OrderStatus.CANCELLED
+        elif float(self.executed_amount) == float(self.original_amount):
+            self.status = OrderStatus.FILLED
+        elif float(self.executed_amount) > 0:
+            # Has some executions but not fully filled
+            self.status = OrderStatus.PARTIAL_FILL
+        elif self.is_live:
+            # Order is live but no executions yet
+            self.status = OrderStatus.LIVE
+        else:
+            # No executions, not live, not cancelled - must be accepted
+            self.status = OrderStatus.ACCEPTED
 
 class OrderStatusResponse(OrderResponse):
     trades: Optional[List[dict]] = None
@@ -92,3 +108,12 @@ def parse_response(response_data: dict, response_type: type[BaseModel]) -> BaseM
         raise GeminiAPIError(error_response)
     
     return response_type(**response_data) 
+
+class OrderHistoryResponse(BaseModel):
+    orders: List[OrderResponse]
+
+    @classmethod
+    def from_response(cls, response: List[dict]):
+        # Convert each order dict to an OrderResponse object
+        orders = [OrderResponse(**order) for order in response]
+        return cls(orders=orders) 

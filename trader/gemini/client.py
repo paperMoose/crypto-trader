@@ -9,6 +9,7 @@ from .schemas import (
     OrderStatusResponse,
     ActiveOrdersResponse,
     CancelOrderResponse,
+    OrderHistoryResponse,
     parse_response
 )
 from .enums import OrderSide, OrderType, Symbol, OrderOption
@@ -113,4 +114,13 @@ class GeminiClient:
             "order_id": order_id
         }
         response = await self._make_request(endpoint, payload)
-        return parse_response(response, CancelOrderResponse) 
+        return parse_response(response, CancelOrderResponse)
+
+    async def get_order_history(self) -> OrderHistoryResponse:
+        endpoint = "/v1/orders/history"
+        payload = {
+            "request": endpoint,
+            "nonce": get_nonce()
+        }
+        response = await self._make_request(endpoint, payload)
+        return OrderHistoryResponse.from_response(response) 

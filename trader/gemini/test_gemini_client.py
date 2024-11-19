@@ -1,8 +1,10 @@
 import pytest
 from trader.gemini.client import GeminiClient
 from trader.gemini.enums import Symbol, OrderSide, OrderType
-from trader.gemini.schemas import ErrorResponse, OrderResponse, OrderStatusResponse, ActiveOrdersResponse, CancelOrderResponse
+from trader.gemini.schemas import ErrorResponse, OrderResponse, OrderStatus, OrderStatusResponse, ActiveOrdersResponse, CancelOrderResponse, OrderHistoryResponse
 import logging
+import datetime
+from datetime import timezone
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -195,3 +197,144 @@ async def test_cancel_orders_by_amount():
         for order in remaining_orders.orders:
             assert order.original_amount not in target_amounts, \
                 f"Order with amount {order.original_amount} should have been cancelled"
+
+@pytest.mark.asyncio
+async def test_get_order_history():
+    """Test getting order history"""
+    async with GeminiClient() as client:
+        response = await client.get_order_history()
+        
+        assert isinstance(response, OrderHistoryResponse)
+        assert hasattr(response, 'orders')
+        assert isinstance(response.orders, list)
+        
+        # Verify we can get up to 50 orders
+        assert len(response.orders) <= 50
+        
+        # If there are orders, verify their structure
+        for order in response.orders:
+            assert isinstance(order, OrderResponse)
+            assert order.order_id is not None
+            assert order.symbol is not None
+            assert order.price is not None
+            assert order.side is not None
+            assert order.type is not None
+            assert order.timestamp is not None
+            assert order.executed_amount is not None
+            assert order.original_amount is not None
+            # remaining_amount is calculated in OrderResponse.model_post_init
+            assert order.remaining_amount is not None
+
+@pytest.mark.asyncio
+async def test_order_status_mapping():
+    """Test that order status is correctly mapped based on order state"""
+    # Test filled order
+    filled_order = OrderResponse(
+        order_id='73771231901973185',
+        id='73771231901973185',
+        symbol='dogeusd',
+        exchange='gemini',
+        avg_execution_price='0.396',
+        side='buy',
+        type='stop-limit',
+        timestamp=datetime.datetime(2024, 11, 19, 13, 8, 15, tzinfo=timezone.utc),
+        timestampms=1732021695557,
+        is_live=False,
+        is_cancelled=False,
+        is_hidden=False,
+        was_forced=False,
+        executed_amount='2500',
+        original_amount='2500',
+        price='0.40',
+        stop_price='0.396',
+        options=[]
+    )
+    assert filled_order.status == OrderStatus.FILLED
+
+    # Test cancelled order
+    cancelled_order = OrderResponse(
+        order_id='73771231901973186',
+        id='73771231901973186',
+        symbol='dogeusd',
+        exchange='gemini',
+        avg_execution_price='0',
+        side='buy',
+        type='exchange limit',
+        timestamp=datetime.datetime(2024, 11, 19, 13, 8, 15, tzinfo=timezone.utc),
+        timestampms=1732021695557,
+        is_live=False,
+        is_cancelled=True,
+        is_hidden=False,
+        was_forced=False,
+        executed_amount='0',
+        original_amount='2500',
+        price='0.40',
+        options=[]
+    )
+    assert cancelled_order.status == OrderStatus.CANCELLED
+
+    # Test live order
+    live_order = OrderResponse(
+        order_id='73771231901973187',
+        id='73771231901973187',
+        symbol='dogeusd',
+        exchange='gemini',
+        avg_execution_price='0',
+        side='buy',
+        type='exchange limit',
+        timestamp=datetime.datetime(2024, 11, 19, 13, 8, 15, tzinfo=timezone.utc),
+        timestampms=1732021695557,
+        is_live=True,
+        is_cancelled=False,
+        is_hidden=False,
+        was_forced=False,
+        executed_amount='0',
+        original_amount='2500',
+        price='0.40',
+        options=[]
+    )
+    assert live_order.status == OrderStatus.LIVE
+
+    # Test partially filled order
+    partially_filled_order = OrderResponse(
+        order_id='73771231901973188',
+        id='73771231901973188',
+        symbol='dogeusd',
+        exchange='gemini',
+        avg_execution_price='0.396',
+        side='buy',
+        type='exchange limit',
+        timestamp=datetime.datetime(2024, 11, 19, 13, 8, 15, tzinfo=timezone.utc),
+        timestampms=1732021695557,
+        is_live=True,
+        is_cancelled=False,
+        is_hidden=False,
+        was_forced=False,
+        executed_amount='1000',
+        original_amount='2500',
+        price='0.40',
+        options=[]
+    )
+    assert partially_filled_order.status == OrderStatus.PARTIAL_FILL
+
+    # Test accepted but not yet live order
+    accepted_order = OrderResponse(
+        order_id='73771231901973189',
+        id='73771231901973189',
+        symbol='dogeusd',
+        exchange='gemini',
+        avg_execution_price='0',
+        side='buy',
+        type='exchange limit',
+        timestamp=datetime.datetime(2024, 11, 19, 13, 8, 15, tzinfo=timezone.utc),
+        timestampms=1732021695557,
+        is_live=False,
+        is_cancelled=False,
+        is_hidden=False,
+        was_forced=False,
+        executed_amount='0',
+        original_amount='2500',
+        price='0.40',
+        options=[]
+    )
+    assert accepted_order.status == OrderStatus.ACCEPTED

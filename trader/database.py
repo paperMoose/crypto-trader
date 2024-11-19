@@ -51,7 +51,7 @@ def get_open_buy_orders(session: Optional[Session] = None, engine=None) -> List[
         statement = select(Order).where(
             and_(
                 Order.side == "buy",
-                Order.status.in_([OrderState.PLACED.value])
+                Order.status.in_([OrderState.ACCEPTED.value])
             )
         )
         return session.exec(statement).all()
