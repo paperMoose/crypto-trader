@@ -67,6 +67,12 @@ class ErrorResponse(BaseModel):
     reason: str
     message: str
 
+class GeminiAPIError(Exception):
+    """Exception raised for Gemini API errors"""
+    def __init__(self, response: 'ErrorResponse'):
+        self.response = response
+        super().__init__(f"Gemini API Error: {response.message} (Reason: {response.reason})")
+
 def parse_response(response_data: dict, response_type: type[BaseModel]) -> BaseModel:
     """
     Parse API response into appropriate Pydantic model
@@ -77,8 +83,12 @@ def parse_response(response_data: dict, response_type: type[BaseModel]) -> BaseM
         
     Returns:
         Parsed Pydantic model instance
+        
+    Raises:
+        GeminiAPIError: If the API returns an error response
     """
     if "result" in response_data and response_data["result"] == "error":
-        return ErrorResponse(**response_data)
+        error_response = ErrorResponse(**response_data)
+        raise GeminiAPIError(error_response)
     
     return response_type(**response_data) 
