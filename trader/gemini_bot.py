@@ -38,7 +38,7 @@ async def main():
         "type": StrategyType.BREAKOUT,
         "symbol": "dogeusd",
         "state": StrategyState.ACTIVE,
-        "check_interval": 60,
+        "check_interval": 2,
         "config": {
             "breakout_price": "0.40000",
             "amount": "2500",
@@ -54,7 +54,7 @@ async def main():
         "type": StrategyType.RANGE,
         "symbol": "dogeusd",
         "state": StrategyState.ACTIVE,
-        "check_interval": 60,
+        "check_interval": 2,
         "config": {
             "support_price": "0.35500",    # Strong support level
             "resistance_price": "0.38800",  # Just below breakout level
