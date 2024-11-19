@@ -1,11 +1,12 @@
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from sqlmodel import Session, select
-from trader.strategies import RangeStrategy, BreakoutStrategy, StrategyManager, BaseStrategy
+from trader.strategies import RangeStrategy, BreakoutStrategy, StrategyManager, BaseStrategy, TakeProfitStrategy
 from trader.models import Order, OrderState, OrderType, StrategyType, StrategyState, TradingStrategy
 from trader.gemini.enums import OrderSide, OrderType as GeminiOrderType
 from trader.database import save_strategy, save_order, update_order
 from datetime import datetime, timedelta
+from asyncio import Future
 
 
 # Test Data Fixtures
@@ -41,6 +42,36 @@ def breakout_strategy_data():
             "stop_loss": "0.33"
         }
     }
+
+@pytest.fixture
+def take_profit_strategy():
+    client = Mock()
+    return TakeProfitStrategy(client)
+
+@pytest.fixture
+def take_profit_config():
+    return {
+        "current_position": "10000",
+        "entry_price": "0.40800",
+        "take_profit_price": "0.42000",
+        "stop_loss_price": "0.40400"
+    }
+
+@pytest.fixture
+def take_profit_db_strategy(take_profit_config):
+    return TradingStrategy(
+        id=1,
+        name="Test Take Profit Strategy",
+        type=StrategyType.TAKE_PROFIT,
+        symbol="dogeusd",
+        config=take_profit_config,
+        state=StrategyState.ACTIVE,
+        is_active=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+        last_checked_at=datetime.utcnow(),
+        check_interval=1
+    )
 
 
 # Base Strategy Tests
@@ -476,3 +507,142 @@ def create_mock_order_response(order_id, status="accepted", **kwargs):
         'symbol': kwargs.get('symbol', 'dogeusd'),
         'stop_price': kwargs.get('stop_price', None)
     })
+
+class TestTakeProfitStrategy:
+    def test_validate_config_valid(self, take_profit_strategy, take_profit_config):
+        """Test that a valid config passes validation"""
+        assert take_profit_strategy.validate_config(take_profit_config) is True
+
+    def test_validate_config_invalid(self, take_profit_strategy):
+        """Test that invalid configs fail validation"""
+        invalid_configs = [
+            {},  # Empty config
+            {"current_position": "10000"},  # Missing fields
+            {  # Missing stop_loss_price
+                "current_position": "10000",
+                "entry_price": "0.40800",
+                "take_profit_price": "0.42000"
+            }
+        ]
+        for config in invalid_configs:
+            assert take_profit_strategy.validate_config(config) is False
+
+    @pytest.mark.asyncio
+    async def test_execute_place_take_profit_order(self, take_profit_strategy, take_profit_db_strategy):
+        """Test that strategy places take profit order when no orders exist"""
+        # Mock service and client responses
+        mock_service = Mock()
+        mock_service.get_current_price = AsyncMock(return_value="0.41000")
+        mock_service.order_service.update_order_statuses = AsyncMock()
+        mock_service.order_service.place_order = AsyncMock(return_value=Mock(
+            order_id="test_order",
+            status=OrderState.ACCEPTED
+        ))
+        mock_service.handle_error = AsyncMock()
+        
+        # Create session mock
+        session = Mock()
+        
+        # Patch StrategyService to return our mock
+        with patch('trader.strategies.StrategyService', return_value=mock_service):
+            await take_profit_strategy.execute(take_profit_db_strategy, session)
+            
+            # Verify take profit order was placed
+            mock_service.order_service.place_order.assert_called_once_with(
+                strategy=take_profit_db_strategy,
+                amount="10000",
+                price="0.42000",
+                side=OrderSide.SELL,
+                order_type=OrderType.LIMIT_SELL
+            )
+
+    @pytest.mark.asyncio
+    async def test_execute_stop_loss_trigger(self, take_profit_strategy, take_profit_db_strategy):
+        """Test that strategy executes stop loss when price drops below threshold"""
+        # Mock service and client responses
+        mock_service = Mock()
+        mock_service.get_current_price = AsyncMock(return_value="0.40300")  # Price below stop loss
+        mock_service.order_service.update_order_statuses = AsyncMock()
+        mock_service.execute_stop_loss = AsyncMock()
+        mock_service.handle_error = AsyncMock()
+        
+        # Create session mock
+        session = Mock()
+        
+        # Patch StrategyService to return our mock
+        with patch('trader.strategies.StrategyService', return_value=mock_service):
+            await take_profit_strategy.execute(take_profit_db_strategy, session)
+            
+            # Verify stop loss was executed
+            mock_service.execute_stop_loss.assert_called_once_with(
+                strategy=take_profit_db_strategy,
+                current_price="0.40300",
+                stop_price="0.40400",
+                amount="10000",
+                active_orders=[]
+            )
+
+    @pytest.mark.asyncio
+    async def test_execute_complete_on_filled(self, take_profit_strategy, take_profit_db_strategy):
+        """Test that strategy completes when sell order is filled"""
+        # Mock service and client responses
+        mock_service = Mock()
+        mock_service.get_current_price = AsyncMock(return_value="0.42000")
+        mock_service.order_service.update_order_statuses = AsyncMock()
+        mock_service.handle_error = AsyncMock()
+        
+        # Add a filled sell order to the strategy
+        filled_order = Order(
+            order_id="test_order",
+            status=OrderState.FILLED,
+            amount="10000",
+            price="0.42000",
+            side=OrderSide.SELL.value,
+            symbol="dogeusd",
+            order_type=OrderType.LIMIT_SELL,
+            strategy_id=take_profit_db_strategy.id
+        )
+        take_profit_db_strategy.orders = [filled_order]
+        
+        # Create session mock
+        session = Mock()
+        
+        # Patch StrategyService to return our mock
+        with patch('trader.strategies.StrategyService', return_value=mock_service):
+            await take_profit_strategy.execute(take_profit_db_strategy, session)
+            
+            # Verify strategy was completed
+            mock_service.complete_strategy.assert_called_once_with(take_profit_db_strategy)
+
+    @pytest.mark.asyncio
+    async def test_execute_maintain_existing_orders(self, take_profit_strategy, take_profit_db_strategy):
+        """Test that strategy maintains existing active orders"""
+        # Mock service and client responses
+        mock_service = Mock()
+        mock_service.get_current_price = AsyncMock(return_value="0.41000")
+        mock_service.order_service.update_order_statuses = AsyncMock()
+        mock_service.order_service.place_order = AsyncMock()
+        mock_service.handle_error = AsyncMock()
+        
+        # Add an active sell order to the strategy
+        active_order = Order(
+            order_id="test_order",
+            status=OrderState.LIVE,
+            amount="10000",
+            price="0.42000",
+            side=OrderSide.SELL.value,
+            symbol="dogeusd",
+            order_type=OrderType.LIMIT_SELL,
+            strategy_id=take_profit_db_strategy.id
+        )
+        take_profit_db_strategy.orders = [active_order]
+        
+        # Create session mock
+        session = Mock()
+        
+        # Patch StrategyService to return our mock
+        with patch('trader.strategies.StrategyService', return_value=mock_service):
+            await take_profit_strategy.execute(take_profit_db_strategy, session)
+            
+            # Verify no new orders were placed
+            mock_service.order_service.place_order.assert_not_called()

@@ -172,6 +172,65 @@ class BreakoutStrategy(BaseStrategy):
         except Exception as e:
             await service.handle_error(strategy, e)
 
+class TakeProfitStrategy(BaseStrategy):
+    def __init__(self, client: GeminiClient):
+        super().__init__(client)
+        self.logger = logging.getLogger("TakeProfitStrategy")
+    
+    def validate_config(self, config: Dict[str, Any]) -> bool:
+        required = {'current_position', 'entry_price', 'take_profit_price', 'stop_loss_price'}
+        return all(k in config for k in required)
+    
+    async def execute(self, strategy: TradingStrategy, session: Session) -> None:
+        """Execute take profit strategy for existing position"""
+        service = StrategyService(self.client, session)
+        
+        try:
+            # Get current price and update order statuses
+            current_price = await service.get_current_price(strategy.symbol)
+            self.logger.info(f"Executing strategy for {strategy.name} (Current Price: ${current_price})")
+            await service.order_service.update_order_statuses(strategy)
+            
+            config = strategy.config
+            
+            # Check existing sell orders
+            sell_orders = [o for o in strategy.orders if o.side == OrderSide.SELL.value]
+            
+            # Check if strategy is complete (sell order filled)
+            filled_sell_orders = [o for o in sell_orders if o.status.value == "filled"]
+            if filled_sell_orders:
+                service.complete_strategy(strategy)
+                return
+            
+            # Check stop loss
+            if float(current_price) <= float(config['stop_loss_price']):
+                active_sell_orders = [o for o in sell_orders 
+                                    if o.status.value not in ["filled", "cancelled"]]
+                await service.execute_stop_loss(
+                    strategy=strategy,
+                    current_price=current_price,
+                    stop_price=config['stop_loss_price'],
+                    amount=config['current_position'],
+                    active_orders=active_sell_orders
+                )
+                return
+            
+            # Place take profit order if none exists
+            active_sell_orders = [o for o in sell_orders 
+                                if o.status.value not in ["filled", "cancelled"]]
+            if not active_sell_orders:
+                self.logger.info(f"Placing take profit order at {config['take_profit_price']}")
+                await service.order_service.place_order(
+                    strategy=strategy,
+                    amount=config['current_position'],
+                    price=config['take_profit_price'],
+                    side=OrderSide.SELL,
+                    order_type=OrderType.LIMIT_SELL
+                )
+                    
+        except Exception as e:
+            await service.handle_error(strategy, e)
+
 class StrategyManager:
     def __init__(self, session: Session, client: GeminiClient):
         self.session = session
@@ -179,7 +238,8 @@ class StrategyManager:
         self.logger = logging.getLogger("StrategyManager")
         self.strategies = {
             StrategyType.RANGE: RangeStrategy(client),
-            StrategyType.BREAKOUT: BreakoutStrategy(client)
+            StrategyType.BREAKOUT: BreakoutStrategy(client),
+            StrategyType.TAKE_PROFIT: TakeProfitStrategy(client)
         }
         self.service = StrategyService(client, session, self.strategies)
         self.logger.info("Strategy Manager initialized")

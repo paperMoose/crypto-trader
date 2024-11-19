@@ -60,18 +60,18 @@ async def main():
     
     # Define strategies
     strategies = [
-        # Range strategy
+        # Take Profit strategy for existing DOGE position
         {
-            "name": "DOGE Range 0.408-0.420 (Position 2)", 
-            "type": StrategyType.RANGE,
+            "name": "DOGE Take Profit 0.420 (Existing Position)", 
+            "type": StrategyType.TAKE_PROFIT,
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "support_price": "0.40800",   # Buy price: $4,080.00 position cost
-                "resistance_price": "0.42000", # Sell price for +2.94% profit ($120 on 10000 DOGE)
-                "stop_loss_price": "0.40400", # Stop loss for -0.98% loss ($40 on 10000 DOGE)
-                "amount": "10000"             # 10000 DOGE position (~$4,080 capital use)
+                "current_position": "10000",     # Amount of DOGE we already own
+                "entry_price": "0.40800",        # Our average entry price
+                "take_profit_price": "0.42000",  # Target sell price for +2.94% profit ($120)
+                "stop_loss_price": "0.40400",    # Stop loss for -0.98% loss ($40)
             }
         }
     ]

@@ -7,6 +7,7 @@ from enum import Enum
 class StrategyType(str, Enum):
     RANGE = "range"
     BREAKOUT = "breakout"
+    TAKE_PROFIT = "take_profit"
 
 class OrderType(str, Enum):
     LIMIT_BUY = "limit_buy"
