@@ -70,11 +70,8 @@ def test_range_strategy_validate_config():
 
 @pytest.mark.asyncio
 async def test_range_strategy_initial_orders(session, mock_gemini_client, range_strategy_data):
-    """Test that range strategy places initial buy and sell orders correctly"""
-    mock_gemini_client.place_order.side_effect = [
-        type('Response', (), {'order_id': 'test_buy_123'}),
-        type('Response', (), {'order_id': 'test_sell_123'})
-    ]
+    """Test that range strategy places initial buy order correctly"""
+    mock_gemini_client.place_order.return_value = type('Response', (), {'order_id': 'test_buy_123'})
     
     strategy = TradingStrategy(**range_strategy_data)
     session.add(strategy)
@@ -83,17 +80,57 @@ async def test_range_strategy_initial_orders(session, mock_gemini_client, range_
     range_strategy = RangeStrategy(mock_gemini_client)
     await range_strategy.execute(strategy, session)
     
-    assert mock_gemini_client.place_order.call_count == 2
+    # Should only place buy order initially
+    assert mock_gemini_client.place_order.call_count == 1
     
-    buy_call = mock_gemini_client.place_order.call_args_list[0][1]
+    buy_call = mock_gemini_client.place_order.call_args[1]
     assert buy_call["side"] == OrderSide.BUY
     assert buy_call["price"] == "0.30"
     assert buy_call["amount"] == "1000"
+
+@pytest.mark.asyncio
+async def test_range_strategy_filled_buy_order(session, mock_gemini_client, range_strategy_data):
+    """Test that range strategy places sell orders after buy order fills"""
+    strategy = TradingStrategy(**range_strategy_data)
+    session.add(strategy)
+    session.commit()
     
-    sell_call = mock_gemini_client.place_order.call_args_list[1][1]
+    # Create filled buy order
+    buy_order = Order(
+        order_id="test_buy_123",
+        status=OrderState.FILLED,
+        amount="1000",
+        price="0.30",
+        side=OrderSide.BUY.value,
+        symbol=strategy.symbol,
+        order_type=OrderType.LIMIT_BUY,
+        strategy_id=strategy.id
+    )
+    session.add(buy_order)
+    session.commit()
+    
+    # Configure mock for sell and stop loss orders
+    mock_gemini_client.place_order.side_effect = [
+        type('Response', (), {'order_id': 'test_sell_123'}),
+        type('Response', (), {'order_id': 'test_stop_123'})
+    ]
+    
+    range_strategy = RangeStrategy(mock_gemini_client)
+    await range_strategy.execute(strategy, session)
+    
+    # Should place both sell and stop loss orders
+    assert mock_gemini_client.place_order.call_count == 2
+    
+    sell_call = mock_gemini_client.place_order.call_args_list[0][1]
     assert sell_call["side"] == OrderSide.SELL
     assert sell_call["price"] == "0.35"
     assert sell_call["amount"] == "1000"
+    
+    stop_call = mock_gemini_client.place_order.call_args_list[1][1]
+    assert stop_call["side"] == OrderSide.SELL
+    assert stop_call["price"] == "0.29"
+    assert stop_call["amount"] == "1000"
+    assert stop_call["order_type"] == GeminiOrderType.EXCHANGE_STOP_LIMIT
 
 @pytest.mark.asyncio
 async def test_range_strategy_existing_orders(session, mock_gemini_client, range_strategy_data):
@@ -101,11 +138,11 @@ async def test_range_strategy_existing_orders(session, mock_gemini_client, range
     # Use save_strategy with the data dictionary directly
     strategy = save_strategy(range_strategy_data, session)
     
-    # Add existing ACTIVE orders using save_order
+    # Add existing LIVE orders using save_order
     existing_orders_data = [
         {
             "order_id": "existing_buy_123",
-            "status": OrderState.ACTIVE,
+            "status": OrderState.LIVE.value,
             "amount": "1000",
             "price": "0.30",
             "side": OrderSide.BUY.value,
@@ -115,7 +152,7 @@ async def test_range_strategy_existing_orders(session, mock_gemini_client, range
         },
         {
             "order_id": "existing_sell_123",
-            "status": OrderState.ACTIVE,
+            "status": OrderState.LIVE.value,
             "amount": "1000",
             "price": "0.35",
             "side": OrderSide.SELL.value,
@@ -259,7 +296,7 @@ async def test_strategy_manager_update_orders(session, mock_gemini_client):
     # Create initial order
     order = Order(
         order_id="test_order_123",
-        status=OrderState.PLACED,
+        status=OrderState.ACCEPTED,
         amount="1000",
         price="0.35",
         side=OrderSide.BUY.value,
@@ -300,7 +337,7 @@ async def test_strategy_manager_monitor_strategies(session, mock_gemini_client, 
     
     with patch.object(StrategyManager, 'monitor_strategies', mock_monitor):
         await manager.monitor_strategies()
-        assert mock_gemini_client.place_order.call_count == 2
+        assert mock_gemini_client.place_order.call_count == 1
 
 @pytest.mark.asyncio
 async def test_strategy_manager_basic_cycle(session, mock_gemini_client, range_strategy_data):
@@ -310,39 +347,45 @@ async def test_strategy_manager_basic_cycle(session, mock_gemini_client, range_s
     # Create strategy
     strategy = await manager.create_strategy(range_strategy_data)
     
-    # Configure mock responses for initial order placement
-    mock_gemini_client.place_order.side_effect = [
-        type('Response', (), {'order_id': 'buy_123'}),
-        type('Response', (), {'order_id': 'sell_123'})
-    ]
+    # Configure mock for initial buy order
+    mock_gemini_client.place_order.return_value = type('Response', (), {'order_id': 'buy_123'})
     
-    # First execution to place orders
+    # First execution to place buy order
     mock_gemini_client.get_orders.return_value = []
     await manager.strategies[strategy.type].execute(strategy, session)
     
-    # Verify initial order placement
+    # Verify initial buy order placement
     session.refresh(strategy)
-    assert len(strategy.orders) == 2
+    assert len(strategy.orders) == 1
+    buy_order = strategy.orders[0]
+    assert buy_order.side == OrderSide.BUY.value
+    assert buy_order.price == range_strategy_data['config']['support_price']
     
-    # Configure mock responses for order status update
-    mock_gemini_client.check_order_status.side_effect = [
-        type('Response', (), {'order_id': 'buy_123', 'status': OrderState.FILLED.value}),
-        type('Response', (), {'order_id': 'sell_123', 'status': OrderState.ACTIVE.value})
-    ]
+    # Configure mock for order status update to filled
+    mock_gemini_client.check_order_status.return_value = type(
+        'Response', (), {'order_id': 'buy_123', 'status': OrderState.FILLED.value}
+    )
     
-    # Update order statuses
+    # Update order status
     await manager.update_orders(strategy)
     
-    # Refresh and verify final states
+    # Configure mock for sell and stop loss orders
+    mock_gemini_client.place_order.side_effect = [
+        type('Response', (), {'order_id': 'sell_123'}),
+        type('Response', (), {'order_id': 'stop_123'})
+    ]
+    
+    # Execute again to place sell orders
+    await manager.strategies[strategy.type].execute(strategy, session)
+    
+    # Verify sell orders were placed
     session.refresh(strategy)
+    assert len(strategy.orders) == 3  # Buy + Sell + Stop Loss
     
-    buy_order = next(o for o in strategy.orders if o.side == OrderSide.BUY.value)
-    sell_order = next(o for o in strategy.orders if o.side == OrderSide.SELL.value)
-    
-    assert buy_order.status == OrderState.FILLED
-    assert sell_order.status == OrderState.ACTIVE
-    assert buy_order.price == range_strategy_data['config']['support_price']
-    assert sell_order.price == range_strategy_data['config']['resistance_price']
+    sell_orders = [o for o in strategy.orders if o.side == OrderSide.SELL.value]
+    assert len(sell_orders) == 2
+    assert any(o.price == range_strategy_data['config']['resistance_price'] for o in sell_orders)
+    assert any(o.price == range_strategy_data['config']['stop_loss_price'] for o in sell_orders)
 
 @pytest.mark.asyncio
 async def test_breakout_strategy_order_flow(session, mock_gemini_client, breakout_strategy_data):
@@ -358,9 +401,9 @@ async def test_breakout_strategy_order_flow(session, mock_gemini_client, breakou
         type('Response', (), {'order_id': 'sl_123'})
     ]
     
-    # First check: stop order is active
+    # First check: stop order is live
     mock_gemini_client.check_order_status.side_effect = [
-        type('Response', (), {'order_id': 'stop_123', 'status': OrderState.ACTIVE.value})
+        type('Response', (), {'order_id': 'stop_123', 'status': OrderState.LIVE.value})
     ]
     mock_gemini_client.get_orders.return_value = []
     

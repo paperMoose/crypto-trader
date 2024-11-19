@@ -13,30 +13,51 @@ def get_engine():
     """Get the current database engine"""
     return default_engine
 
+def get_session(engine=None):
+    """Get a new session for the database"""
+    engine = engine or default_engine
+    return Session(engine)
+
 def init_db(engine=None):
     """Initialize the database by creating all tables if they don't exist"""
     from trader.models import SQLModel  # Import here to avoid circular imports
     engine = engine or default_engine
     SQLModel.metadata.create_all(engine, checkfirst=True)
 
-def load_orders(engine=None) -> List[Order]:
+def load_orders(session: Optional[Session] = None, engine=None) -> List[Order]:
     """Get all orders from the database"""
-    engine = engine or default_engine
-    with Session(engine) as session:
+    local_session = False
+    if session is None:
+        engine = engine or default_engine
+        session = Session(engine)
+        local_session = True
+
+    try:
         statement = select(Order)
         return session.exec(statement).all()
+    finally:
+        if local_session:
+            session.close()
 
-def get_open_buy_orders(engine=None) -> List[Order]:
+def get_open_buy_orders(session: Optional[Session] = None, engine=None) -> List[Order]:
     """Get all open buy orders that don't have sell orders placed"""
-    engine = engine or default_engine
-    with Session(engine) as session:
+    local_session = False
+    if session is None:
+        engine = engine or default_engine
+        session = Session(engine)
+        local_session = True
+
+    try:
         statement = select(Order).where(
             and_(
                 Order.side == "buy",
-                Order.status.in_([OrderState.PLACED.value])
+                Order.status.in_([OrderState.ACCEPTED.value])
             )
         )
         return session.exec(statement).all()
+    finally:
+        if local_session:
+            session.close()
 
 def save_order(order_data: Dict[str, Any], session: Optional[Session] = None, engine: Optional[Engine] = None) -> Order:
     """
@@ -97,31 +118,55 @@ def update_order(order_id: str, session: Optional[Session] = None, engine: Optio
         if local_session:
             session.close()
 
-def get_order_by_id(order_id: str, engine=None) -> Optional[Order]:
+def get_order_by_id(order_id: str, session: Optional[Session] = None, engine=None) -> Optional[Order]:
     """Get a specific order by its order_id"""
-    engine = engine or default_engine
-    with Session(engine) as session:
+    local_session = False
+    if session is None:
+        engine = engine or default_engine
+        session = Session(engine)
+        local_session = True
+
+    try:
         statement = select(Order).where(Order.order_id == order_id)
         return session.exec(statement).first()
+    finally:
+        if local_session:
+            session.close()
 
-def get_orders_by_parent_id(parent_order_id: str, engine=None) -> List[Order]:
+def get_orders_by_parent_id(parent_order_id: str, session: Optional[Session] = None, engine=None) -> List[Order]:
     """Get all orders associated with a parent order"""
-    engine = engine or default_engine
-    with Session(engine) as session:
+    local_session = False
+    if session is None:
+        engine = engine or default_engine
+        session = Session(engine)
+        local_session = True
+
+    try:
         statement = select(Order).where(Order.parent_order_id == parent_order_id)
         return session.exec(statement).all()
+    finally:
+        if local_session:
+            session.close()
 
-def delete_order(order_id: str, engine=None) -> bool:
+def delete_order(order_id: str, session: Optional[Session] = None, engine=None) -> bool:
     """Delete an order from the database"""
-    engine = engine or default_engine
-    with Session(engine) as session:
+    local_session = False
+    if session is None:
+        engine = engine or default_engine
+        session = Session(engine)
+        local_session = True
+
+    try:
         statement = select(Order).where(Order.order_id == order_id)
         order = session.exec(statement).first()
         if order:
             session.delete(order)
             session.commit()
             return True
-    return False
+        return False
+    finally:
+        if local_session:
+            session.close()
 
 def save_strategy(strategy_data: Dict[str, Any], session: Optional[Session] = None, engine: Optional[Engine] = None) -> TradingStrategy:
     """
@@ -154,10 +199,15 @@ def save_strategy(strategy_data: Dict[str, Any], session: Optional[Session] = No
         if local_session:
             session.close()
 
-def get_active_strategies(engine=None) -> List[TradingStrategy]:
+def get_active_strategies(session: Optional[Session] = None, engine=None) -> List[TradingStrategy]:
     """Get all active trading strategies"""
-    engine = engine or default_engine
-    with Session(engine) as session:
+    local_session = False
+    if session is None:
+        engine = engine or default_engine
+        session = Session(engine)
+        local_session = True
+
+    try:
         statement = select(TradingStrategy).where(
             and_(
                 TradingStrategy.is_active == True,
@@ -165,18 +215,34 @@ def get_active_strategies(engine=None) -> List[TradingStrategy]:
             )
         )
         return session.exec(statement).all()
+    finally:
+        if local_session:
+            session.close()
 
-def get_strategy_by_id(strategy_id: int, engine=None) -> Optional[TradingStrategy]:
+def get_strategy_by_id(strategy_id: int, session: Optional[Session] = None, engine=None) -> Optional[TradingStrategy]:
     """Get a specific strategy by its ID"""
-    engine = engine or default_engine
-    with Session(engine) as session:
+    local_session = False
+    if session is None:
+        engine = engine or default_engine
+        session = Session(engine)
+        local_session = True
+
+    try:
         statement = select(TradingStrategy).where(TradingStrategy.id == strategy_id)
         return session.exec(statement).first()
+    finally:
+        if local_session:
+            session.close()
 
-def update_strategy(strategy_id: int, engine=None, **updates) -> Optional[TradingStrategy]:
+def update_strategy(strategy_id: int, session: Optional[Session] = None, engine=None, **updates) -> Optional[TradingStrategy]:
     """Update an existing strategy in the database"""
-    engine = engine or default_engine
-    with Session(engine) as session:
+    local_session = False
+    if session is None:
+        engine = engine or default_engine
+        session = Session(engine)
+        local_session = True
+
+    try:
         statement = select(TradingStrategy).where(TradingStrategy.id == strategy_id)
         strategy = session.exec(statement).first()
         if strategy:
@@ -188,7 +254,26 @@ def update_strategy(strategy_id: int, engine=None, **updates) -> Optional[Tradin
                 setattr(strategy, key, value)
             strategy.updated_at = datetime.utcnow()
             session.add(strategy)
-            session.commit()
+            if local_session:
+                session.commit()
             session.refresh(strategy)
             return strategy
-    return None 
+        return None
+    finally:
+        if local_session:
+            session.close()
+
+def get_strategy_by_name(name: str, session: Optional[Session] = None, engine=None) -> Optional[TradingStrategy]:
+    """Get a specific strategy by its name"""
+    local_session = False
+    if session is None:
+        engine = engine or default_engine
+        session = Session(engine)
+        local_session = True
+
+    try:
+        statement = select(TradingStrategy).where(TradingStrategy.name == name)
+        return session.exec(statement).first()
+    finally:
+        if local_session:
+            session.close() 

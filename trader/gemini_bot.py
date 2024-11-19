@@ -1,12 +1,26 @@
 import asyncio
 import logging
 from datetime import datetime
-from trader.database import init_db, get_engine, get_session
+from trader.database import init_db, get_engine, get_session, get_strategy_by_name
 from trader.gemini.client import GeminiClient
 from trader.strategies import StrategyManager, StrategyType, StrategyState
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+async def get_or_create_strategy(manager, strategy_data):
+    """Get existing strategy or create new one"""
+    existing = get_strategy_by_name(
+        strategy_data["name"], 
+        session=manager.session
+    )
+    
+    if existing:
+        logger.info(f"Found existing strategy: {strategy_data['name']}")
+        return existing
+    
+    logger.info(f"Creating new strategy: {strategy_data['name']}")
+    return await manager.create_strategy(strategy_data)
 
 async def main():
     # Initialize database and clients
@@ -24,7 +38,7 @@ async def main():
         "type": StrategyType.BREAKOUT,
         "symbol": "dogeusd",
         "state": StrategyState.ACTIVE,
-        "check_interval": 60,
+        "check_interval": 2,
         "config": {
             "breakout_price": "0.40000",
             "amount": "2500",
@@ -40,7 +54,7 @@ async def main():
         "type": StrategyType.RANGE,
         "symbol": "dogeusd",
         "state": StrategyState.ACTIVE,
-        "check_interval": 60,
+        "check_interval": 2,
         "config": {
             "support_price": "0.35500",    # Strong support level
             "resistance_price": "0.38800",  # Just below breakout level
@@ -50,12 +64,9 @@ async def main():
     }
     
     try:
-        # Create both strategies
-        logger.info("Creating breakout strategy...")
-        await manager.create_strategy(breakout_strategy)
-        
-        logger.info("Creating range strategy...")
-        await manager.create_strategy(range_strategy)
+        # Get or create both strategies
+        await get_or_create_strategy(manager, breakout_strategy)
+        await get_or_create_strategy(manager, range_strategy)
         
         logger.info("Starting strategy monitor...")
         # Start monitoring - this will run indefinitely
@@ -66,6 +77,7 @@ async def main():
         raise
     finally:
         session.close()
+        await client.close()  # Close the client session properly
 
 if __name__ == "__main__":
     try:

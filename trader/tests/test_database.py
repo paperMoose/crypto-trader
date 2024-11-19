@@ -22,7 +22,7 @@ from trader.models import OrderState, StrategyType, StrategyState
 def sample_order_data():
     return {
         "order_id": "test123",
-        "status": OrderState.PLACED.value,
+        "status": OrderState.ACCEPTED.value,
         "amount": "100",
         "price": "0.35",
         "side": OrderSide.BUY.value,
@@ -35,7 +35,7 @@ def sample_sell_orders_data(sample_order_data):
     return [
         {
             "order_id": "sell1",
-            "status": OrderState.PLACED.value,
+            "status": OrderState.ACCEPTED.value,
             "amount": "50",
             "price": "0.50",
             "side": OrderSide.SELL.value,
@@ -46,7 +46,7 @@ def sample_sell_orders_data(sample_order_data):
         },
         {
             "order_id": "sell2",
-            "status": OrderState.PLACED.value,
+            "status": OrderState.ACCEPTED.value,
             "amount": "50",
             "price": "0.60",
             "side": OrderSide.SELL.value,
