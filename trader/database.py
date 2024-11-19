@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Session, select, create_engine
 from trader.models import Order, OrderState, OrderType, TradingStrategy, StrategyType, StrategyState
-from trader.config import SQLITE_DATABASE_URL
+from trader.config import DATABASE_URL
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy import and_
@@ -9,7 +9,7 @@ from alembic import command
 from alembic.config import Config
 
 # Initialize default database engine
-default_engine = create_engine(SQLITE_DATABASE_URL, echo=False)
+default_engine = create_engine(DATABASE_URL, echo=False)
 
 def get_engine():
     """Get the current database engine"""
@@ -20,19 +20,15 @@ def get_session(engine=None):
     engine = engine or default_engine
     return Session(engine)
 
-def init_db(database_url: str = "sqlite:///orders.db"):
+def init_db(database_url: str = DATABASE_URL):
     """Initialize database with all tables and run migrations"""
     if isinstance(database_url, Engine):
         engine = database_url
     else:
         engine = create_engine(database_url)
     
-    # Create tables
+    # Create tables first
     SQLModel.metadata.create_all(engine)
-    
-    # Run migrations
-    alembic_cfg = Config("alembic.ini")
-    command.upgrade(alembic_cfg, "head")
     
     return engine
 

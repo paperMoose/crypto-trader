@@ -11,7 +11,7 @@ API_SECRET = os.getenv("GEMINI_API_SECRET").encode()
 BASE_URL = "https://api.gemini.com"
 
 # Database settings
-SQLITE_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///orders.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://gemini_bot:gemini_bot_password@localhost:5433/gemini_bot")
 
 # Add function to generate valid nonce
 def get_nonce():

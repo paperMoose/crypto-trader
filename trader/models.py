@@ -52,8 +52,10 @@ class TradingStrategy(SQLModel, table=True):
     orders: List["Order"] = Relationship(back_populates="strategy")
 
 class Order(SQLModel, table=True):
+    __tablename__ = "order"
+    
     id: Optional[int] = Field(default=None, primary_key=True)
-    order_id: str = Field(index=True, unique=True)
+    order_id: str = Field(unique=True)
     status: OrderState
     amount: str
     price: str
@@ -63,12 +65,8 @@ class Order(SQLModel, table=True):
     stop_price: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    parent_order_id: Optional[str] = Field(
-        default=None, 
-        foreign_key="order.order_id", 
-        index=True
-    )
-    
+    parent_order_id: Optional[str] = Field(default=None, foreign_key="order.order_id")
     strategy_id: Optional[int] = Field(default=None, foreign_key="tradingstrategy.id")
+    
     strategy: Optional[TradingStrategy] = Relationship(back_populates="orders")
  
