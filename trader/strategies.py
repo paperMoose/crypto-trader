@@ -93,6 +93,13 @@ class RangeStrategy(BaseStrategy):
                         side=OrderSide.SELL,
                         order_type=OrderType.LIMIT_SELL
                     )
+                    # Track potential profit
+                    service.update_strategy_profits(
+                        strategy,
+                        buy_order.price,
+                        config['resistance_price'],
+                        config['amount']
+                    )
                     
         except Exception as e:
             await service.handle_error(strategy, e)
@@ -166,7 +173,8 @@ class BreakoutStrategy(BaseStrategy):
                     await service.place_take_profit_orders(
                         strategy=strategy,
                         prices=[config['take_profit_1'], config['take_profit_2']],
-                        amount=config['amount']
+                        amount=config['amount'],
+                        buy_price=buy_order.price  # Pass buy price for profit tracking
                     )
                     
         except Exception as e:

@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 from sqlmodel import Session, select
+from trader.services import StrategyService
 from trader.strategies import RangeStrategy, BreakoutStrategy, StrategyManager, BaseStrategy, TakeProfitStrategy
 from trader.models import Order, OrderState, OrderType, StrategyType, StrategyState, TradingStrategy
 from trader.gemini.enums import OrderSide, OrderType as GeminiOrderType
@@ -646,3 +647,43 @@ class TestTakeProfitStrategy:
             
             # Verify no new orders were placed
             mock_service.order_service.place_order.assert_not_called()
+
+@pytest.mark.asyncio
+async def test_strategy_profit_tracking(session, mock_gemini_client, range_strategy_data):
+    """Test profit tracking for a completed trade"""
+    strategy = save_strategy(range_strategy_data, session)
+    
+    # Create filled buy order
+    buy_order = Order(
+        order_id="test_buy_123",
+        status=OrderState.FILLED,
+        amount="1000",
+        price="0.30",  # Buy at $0.30
+        side=OrderSide.BUY.value,
+        symbol=strategy.symbol,
+        order_type=OrderType.LIMIT_BUY,
+        strategy_id=strategy.id
+    )
+    session.add(buy_order)
+    
+    # Create filled sell order
+    sell_order = Order(
+        order_id="test_sell_123",
+        status=OrderState.FILLED,
+        amount="1000",
+        price="0.35",  # Sell at $0.35
+        side=OrderSide.SELL.value,
+        symbol=strategy.symbol,
+        order_type=OrderType.LIMIT_SELL,
+        strategy_id=strategy.id
+    )
+    session.add(sell_order)
+    session.commit()
+    
+    service = StrategyService(mock_gemini_client, session)
+    service.update_strategy_profits(strategy, "0.30", "0.35", "1000")
+    
+    # Verify profit calculations
+    assert float(strategy.total_profit) == 50.0  # ($0.35 - $0.30) * 1000
+    assert float(strategy.tax_reserve) == 25.0  # 50% of profit
+    assert float(strategy.available_profit) == 25.0  # Remaining profit after tax reserve

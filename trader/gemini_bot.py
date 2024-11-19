@@ -51,7 +51,7 @@ async def update_or_create_strategy(manager: StrategyManager, strategy_data: dic
 async def main():
     # Initialize database and clients
     engine = get_engine()
-    init_db(engine)
+    init_db()
     session = get_session(engine)
     client = GeminiClient()
     

@@ -3,6 +3,7 @@ from sqlalchemy import JSON
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+from decimal import Decimal
 
 class StrategyType(str, Enum):
     RANGE = "range"
@@ -33,7 +34,7 @@ class OrderState(str, Enum):
 
 class TradingStrategy(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(index=True)
     type: StrategyType
     symbol: str
     config: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
@@ -43,6 +44,10 @@ class TradingStrategy(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_checked_at: datetime = Field(default_factory=datetime.utcnow)
     check_interval: int = Field(default=1)
+    total_profit: str = Field(default="0.0")
+    realized_profit: str = Field(default="0.0")
+    tax_reserve: str = Field(default="0.0")
+    available_profit: str = Field(default="0.0")
     
     orders: List["Order"] = Relationship(back_populates="strategy")
 
