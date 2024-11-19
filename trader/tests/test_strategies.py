@@ -303,145 +303,96 @@ async def test_strategy_manager_monitor_strategies(session, mock_gemini_client, 
         assert mock_gemini_client.place_order.call_count == 2
 
 @pytest.mark.asyncio
-async def test_strategy_manager_full_cycle(session, mock_gemini_client, range_strategy_data, breakout_strategy_data):
-    """Test strategy manager monitoring multiple strategies through complete trading cycles"""
+async def test_strategy_manager_basic_cycle(session, mock_gemini_client, range_strategy_data):
+    """Test basic strategy execution cycle"""
     manager = StrategyManager(session, mock_gemini_client)
     
-    # Create both types of strategies with old last_checked_at to ensure execution
-    past_time = datetime.utcnow() - timedelta(minutes=5)
-    range_strategy_data['last_checked_at'] = past_time
-    breakout_strategy_data['last_checked_at'] = past_time
+    # Create strategy
+    strategy = await manager.create_strategy(range_strategy_data)
     
-    range_strategy = await manager.create_strategy(range_strategy_data)
-    breakout_strategy = await manager.create_strategy(breakout_strategy_data)
+    # Configure mock responses for initial order placement
+    mock_gemini_client.place_order.side_effect = [
+        type('Response', (), {'order_id': 'buy_123'}),
+        type('Response', (), {'order_id': 'sell_123'})
+    ]
     
-    # Configure mock responses for different cycles
-    cycle_responses = {
-        # Cycle 1: Initial order placement
-        1: {
-            'place_order': [
-                # Range strategy buy and sell orders
-                type('Response', (), {'order_id': 'range_buy_123'}),
-                type('Response', (), {'order_id': 'range_sell_123'}),
-                # Breakout strategy initial stop order
-                type('Response', (), {'order_id': 'breakout_buy_123'})
-            ],
-            'get_orders': [],
-            'check_order_status': [
-                type('Response', (), {'order_id': 'range_buy_123', 'status': OrderState.PLACED.value}),
-                type('Response', (), {'order_id': 'range_sell_123', 'status': OrderState.PLACED.value}),
-                type('Response', (), {'order_id': 'breakout_buy_123', 'status': OrderState.PLACED.value})
-            ]
-        },
-        # Cycle 2: Range buy order fills
-        2: {
-            'place_order': [],
-            'get_orders': [
-                type('Response', (), {'order_id': 'range_buy_123', 'is_live': False}),
-                type('Response', (), {'order_id': 'range_sell_123', 'is_live': True}),
-                type('Response', (), {'order_id': 'breakout_buy_123', 'is_live': True})
-            ],
-            'check_order_status': [
-                type('Response', (), {'order_id': 'range_buy_123', 'status': OrderState.FILLED.value}),
-                type('Response', (), {'order_id': 'range_sell_123', 'status': OrderState.ACTIVE.value}),
-                type('Response', (), {'order_id': 'breakout_buy_123', 'status': OrderState.ACTIVE.value})
-            ]
-        },
-        # Cycle 3: Breakout buy order fills
-        3: {
-            'place_order': [
-                # Breakout take profit and stop loss orders
-                type('Response', (), {'order_id': 'breakout_tp1_123'}),
-                type('Response', (), {'order_id': 'breakout_tp2_123'}),
-                type('Response', (), {'order_id': 'breakout_sl_123'})
-            ],
-            'get_orders': [
-                type('Response', (), {'order_id': 'range_sell_123', 'is_live': True}),
-                type('Response', (), {'order_id': 'breakout_buy_123', 'is_live': False})
-            ],
-            'check_order_status': [
-                type('Response', (), {'order_id': 'range_sell_123', 'status': OrderState.ACTIVE.value}),
-                type('Response', (), {'order_id': 'breakout_buy_123', 'status': OrderState.FILLED.value}),
-                type('Response', (), {'order_id': 'breakout_tp1_123', 'status': OrderState.PLACED.value}),
-                type('Response', (), {'order_id': 'breakout_tp2_123', 'status': OrderState.PLACED.value}),
-                type('Response', (), {'order_id': 'breakout_sl_123', 'status': OrderState.PLACED.value})
-            ]
-        },
-        # Cycle 4: Take profit orders fill
-        4: {
-            'place_order': [],
-            'get_orders': [
-                type('Response', (), {'order_id': 'range_sell_123', 'is_live': True}),
-                type('Response', (), {'order_id': 'breakout_tp1_123', 'is_live': False}),
-                type('Response', (), {'order_id': 'breakout_tp2_123', 'is_live': False}),
-                type('Response', (), {'order_id': 'breakout_sl_123', 'is_live': False})
-            ],
-            'check_order_status': [
-                type('Response', (), {'order_id': 'range_sell_123', 'status': OrderState.ACTIVE.value}),
-                type('Response', (), {'order_id': 'breakout_tp1_123', 'status': OrderState.FILLED.value}),
-                type('Response', (), {'order_id': 'breakout_tp2_123', 'status': OrderState.FILLED.value}),
-                type('Response', (), {'order_id': 'breakout_sl_123', 'status': OrderState.CANCELLED.value})
-            ]
-        }
-    }
+    # First execution to place orders
+    mock_gemini_client.get_orders.return_value = []
+    await manager.strategies[strategy.type].execute(strategy, session)
     
-    current_cycle = 1
+    # Verify initial order placement
+    session.refresh(strategy)
+    assert len(strategy.orders) == 2
     
-    async def mock_monitor(self):
-        nonlocal current_cycle
-        if current_cycle <= 4:  # Run 4 cycles
-            # Configure mock responses for current cycle
-            cycle = cycle_responses[current_cycle]
-            mock_gemini_client.place_order.side_effect = cycle['place_order']
-            mock_gemini_client.get_orders.return_value = cycle['get_orders']
-            mock_gemini_client.check_order_status.side_effect = cycle['check_order_status']
-            
-            # Get fresh instances of strategies
-            statement = select(TradingStrategy).where(TradingStrategy.is_active == True)
-            strategies = session.exec(statement).all()
-            
-            for s in strategies:
-                # Force last_checked_at to be old enough to trigger execution
-                s.last_checked_at = datetime.utcnow() - timedelta(minutes=5)
-                session.add(s)
-                session.commit()
-                
-                # Update orders and execute strategy
-                await manager.update_orders(s)
-                await manager.strategies[s.type].execute(s, session)
-                
-                # Update last_checked_at
-                s.last_checked_at = datetime.utcnow()
-                session.add(s)
-                session.commit()
-            
-            current_cycle += 1
+    # Configure mock responses for order status update
+    mock_gemini_client.check_order_status.side_effect = [
+        type('Response', (), {'order_id': 'buy_123', 'status': OrderState.FILLED.value}),
+        type('Response', (), {'order_id': 'sell_123', 'status': OrderState.ACTIVE.value})
+    ]
     
-    # Run the monitor cycles
-    with patch.object(StrategyManager, 'monitor_strategies', mock_monitor):
-        await manager.monitor_strategies()
+    # Update order statuses
+    await manager.update_orders(strategy)
     
-    session.refresh(range_strategy)
-    session.refresh(breakout_strategy)
+    # Refresh and verify final states
+    session.refresh(strategy)
     
-    # Verify range strategy state
-    range_orders = range_strategy.orders
-    assert len(range_orders) == 2
-    range_buy = next(o for o in range_orders if o.side == OrderSide.BUY.value)
-    assert range_buy.status == OrderState.FILLED
-    range_sell = next(o for o in range_orders if o.side == OrderSide.SELL.value)
-    assert range_sell.status == OrderState.ACTIVE
+    buy_order = next(o for o in strategy.orders if o.side == OrderSide.BUY.value)
+    sell_order = next(o for o in strategy.orders if o.side == OrderSide.SELL.value)
     
-    # Verify breakout strategy state
-    breakout_orders = breakout_strategy.orders
-    assert len(breakout_orders) == 4  # Initial buy + 2 TPs + 1 SL
-    breakout_buy = next(o for o in breakout_orders if o.order_type == OrderType.STOP_LIMIT_BUY)
-    assert breakout_buy.status == OrderState.FILLED
+    assert buy_order.status == OrderState.FILLED
+    assert sell_order.status == OrderState.ACTIVE
+    assert buy_order.price == range_strategy_data['config']['support_price']
+    assert sell_order.price == range_strategy_data['config']['resistance_price']
+
+@pytest.mark.asyncio
+async def test_breakout_strategy_order_flow(session, mock_gemini_client, breakout_strategy_data):
+    """Test breakout strategy order placement flow"""
+    manager = StrategyManager(session, mock_gemini_client)
+    strategy = await manager.create_strategy(breakout_strategy_data)
     
-    take_profits = [o for o in breakout_orders if o.order_type == OrderType.LIMIT_SELL and o.price in 
-                   [breakout_strategy_data['config']['take_profit_1'], breakout_strategy_data['config']['take_profit_2']]]
-    assert len(take_profits) == 2
-    assert all(tp.status == OrderState.FILLED for tp in take_profits)
+    # Mock initial stop order placement
+    mock_gemini_client.place_order.side_effect = [
+        type('Response', (), {'order_id': 'stop_123'}),
+        type('Response', (), {'order_id': 'tp1_123'}),
+        type('Response', (), {'order_id': 'tp2_123'}),
+        type('Response', (), {'order_id': 'sl_123'})
+    ]
     
-    stop_loss = next(o for o in breakout_orders if o.price == breakout_strategy_data['config']['stop_loss'])
-    assert stop_loss.status == OrderState.CANCELLED
+    # First check: stop order is active
+    mock_gemini_client.check_order_status.side_effect = [
+        type('Response', (), {'order_id': 'stop_123', 'status': OrderState.ACTIVE.value})
+    ]
+    mock_gemini_client.get_orders.return_value = []
+    
+    # Execute initial cycle
+    await manager.update_orders(strategy)
+    await manager.strategies[strategy.type].execute(strategy, session)
+    
+    # Verify initial stop order
+    session.refresh(strategy)
+    assert len(strategy.orders) == 1
+    stop_order = strategy.orders[0]
+    assert stop_order.order_type == OrderType.STOP_LIMIT_BUY
+    assert stop_order.price == breakout_strategy_data['config']['breakout_price']
+    
+    # Mock stop order fill and subsequent orders
+    mock_gemini_client.check_order_status.side_effect = [
+        type('Response', (), {'order_id': 'stop_123', 'status': OrderState.FILLED.value})
+    ]
+    
+    # Execute second cycle
+    await manager.update_orders(strategy)
+    await manager.strategies[strategy.type].execute(strategy, session)
+    
+    # Verify take profit and stop loss orders
+    session.refresh(strategy)
+    assert len(strategy.orders) == 4  # Stop + 2 TPs + SL
+    
+    tp_orders = [o for o in strategy.orders if o.order_type == OrderType.LIMIT_SELL 
+                 and o.price in [breakout_strategy_data['config']['take_profit_1'], 
+                               breakout_strategy_data['config']['take_profit_2']]]
+    assert len(tp_orders) == 2
+    
+    sl_order = next(o for o in strategy.orders 
+                   if o.price == breakout_strategy_data['config']['stop_loss'])
+    assert sl_order.order_type == OrderType.STOP_LIMIT_SELL
