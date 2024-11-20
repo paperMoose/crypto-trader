@@ -86,7 +86,7 @@ async def main():
                 "breakout_price": "0.42100",   # Keep same entry
                 "amount": "5000",              
                 "take_profit_1": "0.44000",    # Lowered first target for faster profit
-                "take_profit_2": "0.46000",    # Lowered second target based on volume
+                # "take_profit_2": "0.46000",    # Lowered second target based on volume
                 "stop_loss": "0.41200"         # Raised stop loss slightly
                 # Max Gain: $235 (Average of both targets: (0.44 + 0.46)/2 - 0.421) * 5000 = $235 or 11.2%
                 # Max Loss: $45 ((0.421 - 0.412) * 5000 = $45 or 2.1%)
