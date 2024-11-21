@@ -61,36 +61,19 @@ async def main():
     # Define strategies
     strategies = [
         {
-            "name": "DOGE Range Trade 0.38-0.42",
-            "type": StrategyType.RANGE,
+            "name": "DOGE Range Player",
+            "type": StrategyType.RANGE.value,
             "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "check_interval": 3,
+            "state": StrategyState.ACTIVE.value,
+            "check_interval": 2,
             "config": {
-                "support_price": "0.38000",    # Buy zone
-                "resistance_price": "0.42000",  # Sell zone
-                "amount": "5000",              # 5000 DOGE position
-                "stop_loss_price": "0.37500"   # Stop loss below support
-                # Max Gain: $200 ((0.42 - 0.38) * 5000 = $200 or 10.5%)
-                # Max Loss: $50 ((0.38 - 0.37) * 5000 = $50 or 2.6%)
-                # Risk:Reward Ratio = 1:4
-            }
-        },
-        {
-            "name": "DOGE Breakout Above 0.42",
-            "type": StrategyType.BREAKOUT,
-            "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "check_interval": 3,
-            "config": {
-                "breakout_price": "0.42100",   # Keep same entry
-                "amount": "5000",              
-                "take_profit_1": "0.44000",    # Lowered first target for faster profit
-                # "take_profit_2": "0.46000",    # Lowered second target based on volume
-                "stop_loss": "0.41200"         # Raised stop loss slightly
-                # Max Gain: $235 (Average of both targets: (0.44 + 0.46)/2 - 0.421) * 5000 = $235 or 11.2%
-                # Max Loss: $45 ((0.421 - 0.412) * 5000 = $45 or 2.1%)
-                # Risk:Reward Ratio = 1:5.2
+                "support_price": "0.380",      # Strong support level shown on chart
+                "resistance_price": "0.382",    # Recent resistance level
+                "amount": "2500",              # Position size (~$950)
+                "stop_loss_price": "0.379"     # Stop below support
+                # Risk: ~$2.5 ((0.380 - 0.379) * 2500)
+                # Reward: ~$5 ((0.382 - 0.380) * 2500)
+                # Risk:Reward = 1:2
             }
         }
     ]

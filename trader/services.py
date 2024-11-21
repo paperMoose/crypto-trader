@@ -22,47 +22,67 @@ class OrderService:
         self.session = session
         self.logger = logging.getLogger("OrderService")
 
+    def _convert_to_gemini_order_type(self, order_type: OrderType) -> GeminiOrderType:
+        """Convert internal order type to Gemini order type"""
+        mapping = {
+            OrderType.LIMIT_BUY: GeminiOrderType.EXCHANGE_LIMIT,
+            OrderType.LIMIT_SELL: GeminiOrderType.EXCHANGE_LIMIT,
+            OrderType.STOP_LIMIT_BUY: GeminiOrderType.EXCHANGE_STOP_LIMIT,
+            OrderType.STOP_LIMIT_SELL: GeminiOrderType.EXCHANGE_STOP_LIMIT
+        }
+        return mapping[order_type]
+
     async def place_order(
         self,
         strategy: TradingStrategy,
         amount: str,
         price: str,
         side: OrderSide,
-        order_type: OrderType
+        order_type: OrderType,
+        stop_price: Optional[str] = None,
+        parent_order_id: Optional[str] = None
     ) -> Order:
-        """Place order and persist to database"""
+        """Place a new order"""
+        self.logger.info(f"Placing {side.value} order for {amount} at ${price}")
+        
         try:
-            self.logger.info(f"Placing {side.value} order for {amount} at ${price}")
+            # Convert to Gemini order type
+            gemini_order_type = self._convert_to_gemini_order_type(order_type)
             
+            # Place order with Gemini
             response = await self.client.place_order(
-                symbol=Symbol(strategy.symbol),
+                symbol=strategy.symbol,
                 amount=amount,
                 price=price,
                 side=side,
-                order_type=GeminiOrderType.EXCHANGE_LIMIT
+                order_type=gemini_order_type,  # Use converted order type
+                stop_price=stop_price
             )
             
-            order = Order(
-                order_id=response.order_id,
-                status=OrderState.ACCEPTED,
-                amount=amount,
-                price=price,
-                side=side.value,
-                symbol=strategy.symbol,
-                order_type=order_type,
-                strategy_id=strategy.id
-            )
+            # Create order record
+            order_data = {
+                "order_id": response.order_id,
+                "status": OrderState.ACCEPTED,  # Initial state
+                "amount": amount,
+                "price": price,
+                "side": side.value,
+                "symbol": strategy.symbol,
+                "order_type": order_type,  # Store our internal order type
+                "stop_price": stop_price,
+                "parent_order_id": parent_order_id,
+                "strategy_id": strategy.id,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
             
+            order = Order.model_validate(order_data)
             self.session.add(order)
             self.session.commit()
+            self.session.refresh(order)
             return order
             
-        except GeminiAPIError as e:
-            self.logger.error(f"Gemini API error placing order: {str(e)}")
-            raise
         except Exception as e:
             self.logger.error(f"Error placing order: {str(e)}")
-            self.session.rollback()
             raise
 
     async def cancel_orders(self, orders: List[Order]) -> None:

@@ -179,11 +179,6 @@ def delete_order(order_id: str, session: Optional[Session] = None, engine=None) 
 def save_strategy(strategy_data: Dict[str, Any], session: Optional[Session] = None, engine: Optional[Engine] = None) -> TradingStrategy:
     """
     Save a new trading strategy to the database.
-    
-    Args:
-        strategy_data: Dictionary containing strategy configuration
-        session: Optional existing session to use
-        engine: Optional engine to use if no session provided
     """
     local_session = False
     if session is None:
@@ -197,8 +192,13 @@ def save_strategy(strategy_data: Dict[str, Any], session: Optional[Session] = No
             strategy_data['type'] = StrategyType(strategy_data['type'])
         if isinstance(strategy_data.get('state'), str):
             strategy_data['state'] = StrategyState(strategy_data['state'])
+            
+        # Ensure config is provided
+        if 'config' not in strategy_data:
+            strategy_data['config'] = {}
 
-        strategy = TradingStrategy(**strategy_data)
+        # Create model with validated data
+        strategy = TradingStrategy.model_validate(strategy_data)
         session.add(strategy)
         session.commit()
         session.refresh(strategy)

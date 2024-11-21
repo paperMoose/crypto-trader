@@ -34,21 +34,20 @@ class OrderState(str, Enum):
 
 class TradingStrategy(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
+    name: str = Field(unique=True)
     type: StrategyType
     symbol: str
     config: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
     state: StrategyState = Field(default=StrategyState.INIT)
     is_active: bool = Field(default=True)
+    check_interval: int = Field(default=60)  # seconds
+    total_profit: str = Field(default="0")
+    realized_profit: str = Field(default="0")
+    tax_reserve: str = Field(default="0")
+    available_profit: str = Field(default="0")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     last_checked_at: datetime = Field(default_factory=datetime.utcnow)
-    check_interval: int = Field(default=1)
-    total_profit: str = Field(default="0.0")
-    realized_profit: str = Field(default="0.0")
-    tax_reserve: str = Field(default="0.0")
-    available_profit: str = Field(default="0.0")
-    
     orders: List["Order"] = Relationship(back_populates="strategy")
 
 class Order(SQLModel, table=True):
