@@ -123,6 +123,22 @@ async def main():
                 # Reward 2: $147 ((0.52 - 0.471) * 3000)
                 # Capital required: ~$1,413
             }
+        },
+        {
+            "name": "DOGE Range 11-23-24 (0.425-0.445)",
+            "type": StrategyType.RANGE,
+            "symbol": "dogeusd",
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "support_price": "0.42500",    # Current consolidation support
+                "resistance_price": "0.44500",  # Previous support now resistance
+                "amount": "3500",              # ~$1,487 position
+                "stop_loss_price": "0.41500"   # Below recent support structure
+                # Risk: $35 ((0.425 - 0.415) * 3500)
+                # Reward: $70 ((0.445 - 0.425) * 3500)
+                # Capital required: ~$1,487
+            }
         }
     ]
     
