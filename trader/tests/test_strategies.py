@@ -8,6 +8,7 @@ from trader.gemini.enums import OrderSide, OrderType as GeminiOrderType
 from trader.database import save_strategy, save_order, update_order
 from datetime import datetime, timedelta
 from asyncio import Future
+from sqlalchemy import and_
 
 
 # Test Data Fixtures
@@ -327,7 +328,10 @@ async def test_breakout_strategy_price_validation(session, mock_gemini_client, b
     
     for case in test_cases:
         # Reset database state
-        session.query(Order).filter(Order.strategy_id == db_strategy.id).delete()
+        statement = select(Order).where(Order.strategy_id == db_strategy.id)
+        orders = session.exec(statement).all()
+        for order in orders:
+            session.delete(order)
         session.commit()
         session.refresh(db_strategy)
         
@@ -356,17 +360,21 @@ async def test_breakout_strategy_price_validation(session, mock_gemini_client, b
             assert call_args['price'] == breakout_strategy_data['config']['breakout_price']
             
             # Verify order was saved
-            orders = session.query(Order).filter(
-                Order.strategy_id == db_strategy.id,
-                Order.order_id == case["order_id"]
-            ).all()
+            statement = select(Order).where(
+                and_(
+                    Order.strategy_id == db_strategy.id,
+                    Order.order_id == case["order_id"]
+                )
+            )
+            orders = session.exec(statement).all()
             assert len(orders) == 1
             order = orders[0]
             assert order.side == OrderSide.BUY.value
             assert order.price == breakout_strategy_data['config']['breakout_price']
         else:
             assert not mock_gemini_client.place_order.called, f"Should not place order: {case['description']}"
-            orders = session.query(Order).filter(Order.strategy_id == db_strategy.id).all()
+            statement = select(Order).where(Order.strategy_id == db_strategy.id)
+            orders = session.exec(statement).all()
             assert len(orders) == 0
 
 @pytest.mark.asyncio
