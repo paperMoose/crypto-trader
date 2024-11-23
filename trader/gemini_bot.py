@@ -61,36 +61,52 @@ async def main():
     # Define strategies
     strategies = [
         {
-            "name": "DOGE Range Trade 0.38-0.42",
+            "name": "DOGE Range 11-22-24 (0.40-0.44)",
             "type": StrategyType.RANGE,
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "support_price": "0.38000",    # Buy zone
-                "resistance_price": "0.42000",  # Sell zone
-                "amount": "5000",              # 5000 DOGE position
-                "stop_loss_price": "0.37000"   # Stop loss below support
-                # Max Gain: $200 ((0.42 - 0.38) * 5000 = $200 or 10.5%)
-                # Max Loss: $50 ((0.38 - 0.37) * 5000 = $50 or 2.6%)
+                "support_price": "0.40000",    # New support at previous resistance
+                "resistance_price": "0.44000",  # New resistance level
+                "amount": "3000",              # 3000 DOGE position
+                "stop_loss_price": "0.39000"   # Stop loss below support
+                # Max Gain: $120 ((0.44 - 0.40) * 3000 = $120 or 10%)
+                # Max Loss: $30 ((0.40 - 0.39) * 3000 = $30 or 2.5%)
                 # Risk:Reward Ratio = 1:4
             }
         },
         {
-            "name": "DOGE Breakout Above 0.42",
+            "name": "DOGE Breakout 11-22-24 (Above 0.44)",
             "type": StrategyType.BREAKOUT,
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "breakout_price": "0.42100",   # Entry above resistance
-                "amount": "5000",              # 5000 DOGE position
-                "take_profit_1": "0.45000",    # First target (50% of position)
-                "take_profit_2": "0.48000",    # Second target (50% of position)
-                "stop_loss": "0.41000"         # Tighter stop loss
-                # Max Gain: $295 (Average of both targets: (0.45 + 0.48)/2 - 0.421) * 5000 = $295 or 14%
-                # Max Loss: $55 ((0.421 - 0.41) * 5000 = $55 or 2.6%)
-                # Risk:Reward Ratio = 1:5.4
+                "breakout_price": "0.44100",   # Entry above new resistance
+                "amount": "3000",              # 3000 DOGE position
+                "take_profit_1": "0.47000",    # First target (50% of position)
+                "take_profit_2": "0.50000",    # Second target (50% of position)
+                "stop_loss": "0.43000"         # Tighter stop loss
+                # Max Gain: $267 (Average of both targets: (0.47 + 0.50)/2 - 0.441) * 3000 = $267 or 20%
+                # Max Loss: $33 ((0.441 - 0.43) * 3000 = $33 or 2.5%)
+                # Risk:Reward Ratio = 1:8
+            }
+        },
+        {
+            "name": "DOGE Take Profit 11-22-24 (Current 7.5K Position)",
+            "type": StrategyType.TAKE_PROFIT,
+            "symbol": "dogeusd",
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "current_position": "7500",     # Your current DOGE position
+                "entry_price": "0.42490",       # Current market price
+                "take_profit_price": "0.45000", # Take profit target (+5.9%)
+                "stop_loss_price": "0.41500",   # Stop loss (-2.3%)
+                # Max Gain: $188.25 ((0.45 - 0.4249) * 7500 = $188.25 or 5.9%)
+                # Max Loss: $74.25 ((0.4249 - 0.415) * 7500 = $74.25 or 2.3%)
+                # Risk:Reward Ratio = 1:2.5
             }
         }
     ]
