@@ -77,7 +77,7 @@ async def main():
             }
         },
         {
-            "name": "DOGE Breakout 11-22-24 (Above 0.44)",
+            "name": "DOGE Breakout 11-22-24 pt 2(Above 0.44)",
             "type": StrategyType.BREAKOUT,
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
