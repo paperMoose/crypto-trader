@@ -37,12 +37,14 @@ class TradingStrategy(SQLModel, table=True):
     name: str = Field(index=True)
     type: StrategyType
     symbol: str
-    config: Dict[str, Any] = Field(default_factory=dict, sa_type=JSON)
+    # For JSON fields, provide an empty dict directly instead of using default_factory
+    config: Dict[str, Any] = Field(default={}, sa_type=JSON)
     state: StrategyState = Field(default=StrategyState.INIT)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    last_checked_at: datetime = Field(default_factory=datetime.utcnow)
+    # For datetime fields, use default instead of default_factory
+    created_at: datetime = Field(default=datetime.utcnow())
+    updated_at: datetime = Field(default=datetime.utcnow())
+    last_checked_at: datetime = Field(default=datetime.utcnow())
     check_interval: int = Field(default=1)
     total_profit: str = Field(default="0.0")
     realized_profit: str = Field(default="0.0")
@@ -63,10 +65,10 @@ class Order(SQLModel, table=True):
     symbol: str
     order_type: OrderType
     stop_price: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    # For datetime fields, use default instead of default_factory
+    created_at: datetime = Field(default=datetime.utcnow())
+    updated_at: datetime = Field(default=datetime.utcnow())
     parent_order_id: Optional[str] = Field(default=None, foreign_key="order.order_id")
     strategy_id: Optional[int] = Field(default=None, foreign_key="tradingstrategy.id")
     
     strategy: Optional[TradingStrategy] = Relationship(back_populates="orders")
- 
