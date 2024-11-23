@@ -68,8 +68,11 @@ async def main():
             "config": {
                 "support_price": "0.44500",    # New support at previous resistance
                 "resistance_price": "0.47000",  # New resistance level
-                "amount": "3000",              
-                "stop_loss_price": "0.43500"   
+                "amount": "3000",              # ~$1,335 position
+                "stop_loss_price": "0.43500"   # Below support
+                # Risk: $30 ((0.445 - 0.435) * 3000)
+                # Reward: $75 ((0.47 - 0.445) * 3000)
+                # Capital required: ~$1,335
             }
         },
         {
@@ -79,10 +82,46 @@ async def main():
             "state": StrategyState.ACTIVE,
             "config": {
                 "breakout_price": "0.47100",   
-                "amount": "3000",              
+                "amount": "3000",              # ~$1,413 position
                 "take_profit_1": "0.50000",    
                 "take_profit_2": "0.52000",    
                 "stop_loss": "0.46000"         
+                # Risk: $33 ((0.471 - 0.46) * 3000)
+                # Reward 1: $87 ((0.50 - 0.471) * 3000)
+                # Reward 2: $147 ((0.52 - 0.471) * 3000)
+                # Capital required: ~$1,413
+            }
+        },
+        {
+            "name": "DOGE Range 11-22-24 (0.43-0.45)",
+            "type": StrategyType.RANGE,
+            "symbol": "dogeusd",
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "support_price": "0.43000",    # Strong technical support
+                "resistance_price": "0.45000",  # Previous support becomes resistance
+                "amount": "3500",              # ~$1,505 position
+                "stop_loss_price": "0.42000"   # Below major support
+                # Risk: $35 ((0.43 - 0.42) * 3500)
+                # Reward: $70 ((0.45 - 0.43) * 3500)
+                # Capital required: ~$1,505
+            }
+        },
+        {
+            "name": "DOGE Range 11-22-24 (0.41-0.43)",
+            "type": StrategyType.RANGE,
+            "symbol": "dogeusd",
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "support_price": "0.41000",    # Previous resistance turned support
+                "resistance_price": "0.43000",  # Previous support becomes resistance
+                "amount": "3500",              # ~$1,435 position
+                "stop_loss_price": "0.40000"   # Below major support
+                # Risk: $35 ((0.41 - 0.40) * 3500)
+                # Reward: $70 ((0.43 - 0.41) * 3500)
+                # Capital required: ~$1,435
             }
         }
     ]
