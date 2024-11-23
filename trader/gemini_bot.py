@@ -76,23 +76,6 @@ async def main():
             }
         },
         {
-            "name": "DOGE Breakout 11-22-24 (Above 0.47)",
-            "type": StrategyType.BREAKOUT,
-            "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "config": {
-                "breakout_price": "0.47100",   
-                "amount": "3000",              # ~$1,413 position
-                "take_profit_1": "0.50000",    
-                "take_profit_2": "0.52000",    
-                "stop_loss": "0.46000"         
-                # Risk: $33 ((0.471 - 0.46) * 3000)
-                # Reward 1: $87 ((0.50 - 0.471) * 3000)
-                # Reward 2: $147 ((0.52 - 0.471) * 3000)
-                # Capital required: ~$1,413
-            }
-        },
-        {
             "name": "DOGE Range 11-22-24 (0.43-0.45)",
             "type": StrategyType.RANGE,
             "symbol": "dogeusd",
@@ -122,6 +105,23 @@ async def main():
                 # Risk: $35 ((0.41 - 0.40) * 3500)
                 # Reward: $70 ((0.43 - 0.41) * 3500)
                 # Capital required: ~$1,435
+            }
+        },
+        {
+            "name": "DOGE Breakout 11-23-24 (Above 0.47)",
+            "type": StrategyType.BREAKOUT,
+            "symbol": "dogeusd",
+            "state": StrategyState.ACTIVE,
+            "config": {
+                "breakout_price": "0.47100",   # Entry above recent high
+                "amount": "3000",              # ~$1,413 position
+                "take_profit_1": "0.50000",    # First target at psychological level
+                "take_profit_2": "0.52000",    # Second target at next resistance
+                "stop_loss": "0.46000"         # Below recent support
+                # Risk: $33 ((0.471 - 0.46) * 3000)
+                # Reward 1: $87 ((0.50 - 0.471) * 3000)
+                # Reward 2: $147 ((0.52 - 0.471) * 3000)
+                # Capital required: ~$1,413
             }
         }
     ]
