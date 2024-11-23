@@ -61,19 +61,14 @@ async def main():
     # Define strategies
     strategies = [
         {
-            "name": "DOGE Range Player",
+            "name": "DOGE Range Playa",
             "type": StrategyType.RANGE.value,
             "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE.value,
-            "check_interval": 2,
             "config": {
-                "support_price": "0.380",      # Strong support level shown on chart
-                "resistance_price": "0.382",    # Recent resistance level
-                "amount": "2500",              # Position size (~$950)
-                "stop_loss_price": "0.379"     # Stop below support
-                # Risk: ~$2.5 ((0.380 - 0.379) * 2500)
-                # Reward: ~$5 ((0.382 - 0.380) * 2500)
-                # Risk:Reward = 1:2
+                "support_price": "0.380",      
+                "resistance_price": "0.382",    
+                "amount": "2500",              
+                "stop_loss_price": "0.379"     
             }
         }
     ]

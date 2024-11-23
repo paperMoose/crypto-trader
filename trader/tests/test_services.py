@@ -9,37 +9,54 @@ from datetime import datetime, timedelta
 # Test Data Fixtures
 @pytest.fixture
 def mock_strategy(session):
-    strategy = TradingStrategy(
-        id=1,
-        name="Test Strategy",
-        type=StrategyType.RANGE,
-        symbol="dogeusd",
-        state=StrategyState.ACTIVE,
-        check_interval=60,
-        config={
+    """Create a mock strategy for testing"""
+    strategy_data = {
+        "id": 1,
+        "name": "Test Strategy",
+        "type": StrategyType.RANGE,
+        "symbol": "dogeusd",
+        "state": StrategyState.ACTIVE,
+        "check_interval": 60,
+        "config": {
             "support_price": "0.30",
             "resistance_price": "0.35",
             "stop_loss_price": "0.29",
             "amount": "1000"
-        }
-    )
+        },
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+        "last_checked_at": datetime.utcnow(),
+        "is_active": True,
+        "total_profit": "0",
+        "realized_profit": "0",
+        "tax_reserve": "0",
+        "available_profit": "0"
+    }
+    
+    strategy = TradingStrategy.model_validate(strategy_data)
     session.add(strategy)
     session.commit()
+    session.refresh(strategy)
     return strategy
 
 @pytest.fixture
 def mock_order(mock_strategy):
-    return Order(
-        id=1,
-        order_id="test_123",
-        status=OrderState.ACCEPTED,
-        amount="1000",
-        price="0.35",
-        side=OrderSide.BUY.value,
-        symbol="dogeusd",
-        order_type=OrderType.LIMIT_BUY,
-        strategy_id=mock_strategy.id
-    )
+    """Create a mock order for testing"""
+    order_data = {
+        "id": 1,
+        "order_id": "test_123",
+        "status": OrderState.ACCEPTED,
+        "amount": "1000",
+        "price": "0.35",
+        "side": OrderSide.BUY.value,
+        "symbol": "dogeusd",
+        "order_type": OrderType.LIMIT_BUY,
+        "strategy_id": mock_strategy.id,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    
+    return Order.model_validate(order_data)
 
 # OrderService Tests
 class TestOrderService:
@@ -266,17 +283,22 @@ class TestStrategyService:
         service = StrategyService(mock_gemini_client, session)
         
         # Create test strategy with known profits
-        strategy = TradingStrategy(
-            name="Test Strategy",
-            type=StrategyType.RANGE,
-            symbol="btcusd",
-            total_profit="100.0",
-            realized_profit="90.0",
-            tax_reserve="50.0",
-            available_profit="50.0",
-            state=StrategyState.ACTIVE,
-            is_active=True
-        )
+        strategy_data = {
+            "name": "Test Strategy",
+            "type": StrategyType.RANGE,
+            "symbol": "btcusd",
+            "total_profit": "100.0",
+            "realized_profit": "90.0",
+            "tax_reserve": "50.0",
+            "available_profit": "50.0",
+            "state": StrategyState.ACTIVE,
+            "is_active": True,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+            "last_checked_at": datetime.utcnow(),
+            "config": {}
+        }
+        strategy = TradingStrategy.model_validate(strategy_data)
         session.add(strategy)
         session.commit()
         

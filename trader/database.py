@@ -68,18 +68,7 @@ def get_open_buy_orders(session: Optional[Session] = None, engine=None) -> List[
             session.close()
 
 def save_order(order_data: Dict[str, Any], session: Optional[Session] = None, engine: Optional[Engine] = None) -> Order:
-    """
-    Save a new order to the database.
-    
-    Args:
-        order_data: Dictionary containing order data
-        session: Optional existing session to use
-        engine: Optional engine to use if no session provided
-        
-    Returns:
-        Order: The saved order instance
-    """
-    # Session management
+    """Save a new order to the database"""
     local_session = False
     if session is None:
         engine = engine or default_engine
@@ -87,13 +76,8 @@ def save_order(order_data: Dict[str, Any], session: Optional[Session] = None, en
         local_session = True
 
     try:
-        # Convert string values to enum values if needed
-        if isinstance(order_data.get('status'), str):
-            order_data['status'] = OrderState(order_data['status'])
-        if isinstance(order_data.get('order_type'), str):
-            order_data['order_type'] = OrderType(order_data['order_type'])
-
-        order = Order(**order_data)
+        # Create model with validated data
+        order = Order.model_validate(order_data)
         session.add(order)
         session.commit()
         session.refresh(order)
@@ -177,9 +161,7 @@ def delete_order(order_id: str, session: Optional[Session] = None, engine=None) 
             session.close()
 
 def save_strategy(strategy_data: Dict[str, Any], session: Optional[Session] = None, engine: Optional[Engine] = None) -> TradingStrategy:
-    """
-    Save a new trading strategy to the database.
-    """
+    """Save a new trading strategy to the database"""
     local_session = False
     if session is None:
         engine = engine or default_engine

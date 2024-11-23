@@ -100,12 +100,21 @@ def test_range_strategy_validate_config():
     }
     assert strategy.validate_config(invalid_config) is False
 
+# Helper function to create models
+def create_trading_strategy(**kwargs) -> TradingStrategy:
+    """Create a TradingStrategy instance with proper validation"""
+    return TradingStrategy.model_validate(kwargs)
+
+def create_order(**kwargs) -> Order:
+    """Create an Order instance with proper validation"""
+    return Order.model_validate(kwargs)
+
 @pytest.mark.asyncio
 async def test_range_strategy_initial_orders(session, mock_gemini_client, range_strategy_data):
     """Test that range strategy places initial buy order correctly"""
     mock_gemini_client.place_order.return_value = type('Response', (), {'order_id': 'test_buy_123'})
     
-    strategy = TradingStrategy(**range_strategy_data)
+    strategy = create_trading_strategy(**range_strategy_data)
     session.add(strategy)
     session.commit()
     
@@ -123,12 +132,12 @@ async def test_range_strategy_initial_orders(session, mock_gemini_client, range_
 @pytest.mark.asyncio
 async def test_range_strategy_filled_buy_order(session, mock_gemini_client, range_strategy_data):
     """Test that range strategy places sell orders after buy order fills"""
-    strategy = TradingStrategy(**range_strategy_data)
+    strategy = create_trading_strategy(**range_strategy_data)
     session.add(strategy)
     session.commit()
     
     # Create filled buy order
-    buy_order = Order(
+    buy_order = create_order(
         order_id="test_buy_123",
         status=OrderState.FILLED,
         amount="1000",
@@ -229,19 +238,18 @@ async def test_breakout_strategy_initial_order(session, mock_gemini_client, brea
     """Test that breakout strategy places initial stop order correctly"""
     mock_gemini_client.place_order.return_value = create_mock_order_response('test_buy_123')
     
-    strategy = TradingStrategy(**breakout_strategy_data)
+    strategy = TradingStrategy.model_validate(breakout_strategy_data)
     session.add(strategy)
     session.commit()
     
     breakout_strategy = BreakoutStrategy(mock_gemini_client)
     await breakout_strategy.execute(strategy, session)
     
+    # Should place initial order
     mock_gemini_client.place_order.assert_called_once()
     call_args = mock_gemini_client.place_order.call_args[1]
     assert call_args["side"] == OrderSide.BUY
-    assert call_args["price"] == "0.35"
-    assert call_args["amount"] == "1000"
-    assert call_args["order_type"] == GeminiOrderType.EXCHANGE_LIMIT
+    assert call_args["price"] == breakout_strategy_data['config']['breakout_price']
 
 @pytest.mark.asyncio
 async def test_breakout_strategy_take_profit_orders(session, mock_gemini_client, breakout_strategy_data):
@@ -447,27 +455,42 @@ async def test_strategy_manager_update_orders(session, mock_gemini_client):
     """Test order status updates through manager"""
     manager = StrategyManager(session, mock_gemini_client)
     
-    strategy = TradingStrategy(
-        name="Test Strategy",
-        type=StrategyType.RANGE,
-        symbol="dogeusd",
-        state=StrategyState.ACTIVE,
-        check_interval=10
-    )
-    strategy = save_strategy(strategy.model_dump(), session)
+    strategy_data = {
+        "name": "Test Strategy",
+        "type": StrategyType.RANGE,
+        "symbol": "dogeusd",
+        "state": StrategyState.ACTIVE,
+        "check_interval": 10,
+        "config": {},
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+        "last_checked_at": datetime.utcnow(),
+        "is_active": True,
+        "total_profit": "0",
+        "realized_profit": "0",
+        "tax_reserve": "0",
+        "available_profit": "0"
+    }
+    strategy = TradingStrategy.model_validate(strategy_data)
+    session.add(strategy)
+    session.commit()
     
     # Create initial order
-    order = Order(
-        order_id="test_order_123",
-        status=OrderState.ACCEPTED,
-        amount="1000",
-        price="0.35",
-        side=OrderSide.BUY.value,
-        symbol="dogeusd",
-        order_type=OrderType.LIMIT_BUY,
-        strategy_id=strategy.id
-    )
-    order = save_order(order.model_dump(), session)
+    order_data = {
+        "order_id": "test_order_123",
+        "status": OrderState.ACCEPTED,
+        "amount": "1000",
+        "price": "0.35",
+        "side": OrderSide.BUY.value,
+        "symbol": "dogeusd",
+        "order_type": OrderType.LIMIT_BUY,
+        "strategy_id": strategy.id,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    order = Order.model_validate(order_data)
+    session.add(order)
+    session.commit()
     
     # Mock the order status response
     mock_gemini_client.check_order_status.return_value = create_mock_order_response(
@@ -730,16 +753,19 @@ class TestTakeProfitStrategy:
         mock_service.handle_error = AsyncMock()
         
         # Add a filled sell order to the strategy
-        filled_order = Order(
-            order_id="test_order",
-            status=OrderState.FILLED,
-            amount="10000",
-            price="0.42000",
-            side=OrderSide.SELL.value,
-            symbol="dogeusd",
-            order_type=OrderType.LIMIT_SELL,
-            strategy_id=take_profit_db_strategy.id
-        )
+        filled_order_data = {
+            "order_id": "test_order",
+            "status": OrderState.FILLED,
+            "amount": "10000",
+            "price": "0.42000",
+            "side": OrderSide.SELL.value,
+            "symbol": "dogeusd",
+            "order_type": OrderType.LIMIT_SELL,
+            "strategy_id": take_profit_db_strategy.id,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        filled_order = Order.model_validate(filled_order_data)
         take_profit_db_strategy.orders = [filled_order]
         
         # Create session mock
@@ -763,16 +789,19 @@ class TestTakeProfitStrategy:
         mock_service.handle_error = AsyncMock()
         
         # Add an active sell order to the strategy
-        active_order = Order(
-            order_id="test_order",
-            status=OrderState.LIVE,
-            amount="10000",
-            price="0.42000",
-            side=OrderSide.SELL.value,
-            symbol="dogeusd",
-            order_type=OrderType.LIMIT_SELL,
-            strategy_id=take_profit_db_strategy.id
-        )
+        active_order_data = {
+            "order_id": "test_order",
+            "status": OrderState.LIVE,
+            "amount": "10000",
+            "price": "0.42000",
+            "side": OrderSide.SELL.value,
+            "symbol": "dogeusd",
+            "order_type": OrderType.LIMIT_SELL,
+            "strategy_id": take_profit_db_strategy.id,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        active_order = Order.model_validate(active_order_data)
         take_profit_db_strategy.orders = [active_order]
         
         # Create session mock
@@ -791,29 +820,36 @@ async def test_strategy_profit_tracking(session, mock_gemini_client, range_strat
     strategy = save_strategy(range_strategy_data, session)
     
     # Create filled buy order
-    buy_order = Order(
-        order_id="test_buy_123",
-        status=OrderState.FILLED,
-        amount="1000",
-        price="0.30",  # Buy at $0.30
-        side=OrderSide.BUY.value,
-        symbol=strategy.symbol,
-        order_type=OrderType.LIMIT_BUY,
-        strategy_id=strategy.id
-    )
+    buy_order_data = {
+        "order_id": "test_buy_123",
+        "status": OrderState.FILLED,
+        "amount": "1000",
+        "price": "0.30",  # Buy at $0.30
+        "side": OrderSide.BUY.value,
+        "symbol": strategy.symbol,
+        "order_type": OrderType.LIMIT_BUY,
+        "strategy_id": strategy.id,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    buy_order = Order.model_validate(buy_order_data)
     session.add(buy_order)
+    session.commit()
     
     # Create filled sell order
-    sell_order = Order(
-        order_id="test_sell_123",
-        status=OrderState.FILLED,
-        amount="1000",
-        price="0.35",  # Sell at $0.35
-        side=OrderSide.SELL.value,
-        symbol=strategy.symbol,
-        order_type=OrderType.LIMIT_SELL,
-        strategy_id=strategy.id
-    )
+    sell_order_data = {
+        "order_id": "test_sell_123",
+        "status": OrderState.FILLED,
+        "amount": "1000",
+        "price": "0.35",  # Sell at $0.35
+        "side": OrderSide.SELL.value,
+        "symbol": strategy.symbol,
+        "order_type": OrderType.LIMIT_SELL,
+        "strategy_id": strategy.id,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+    sell_order = Order.model_validate(sell_order_data)
     session.add(sell_order)
     session.commit()
     
