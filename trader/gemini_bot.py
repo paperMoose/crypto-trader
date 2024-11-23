@@ -66,13 +66,12 @@ async def main():
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
             "config": {
-                "support_price": "0.44500",    # New support at previous resistance
-                "resistance_price": "0.47000",  # New resistance level
-                "amount": "3000",              # ~$1,335 position
-                "stop_loss_price": "0.43500"   # Below support
-                # Risk: $30 ((0.445 - 0.435) * 3000)
-                # Reward: $75 ((0.47 - 0.445) * 3000)
-                # Capital required: ~$1,335
+                "support_price": "0.44500",
+                "resistance_price": "0.47000",
+                "amount": "3000",
+                "stop_loss_price": "0.43500",
+                "use_trailing_stop": True,
+                "trail_percent": "0.015"  # 1.5% trailing stop
             }
         },
         {
