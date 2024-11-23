@@ -1,3 +1,4 @@
+import os
 from sqlmodel import SQLModel, Session, select, create_engine
 from trader.models import Order, OrderState, OrderType, TradingStrategy, StrategyType, StrategyState
 from trader.config import DATABASE_URL
@@ -7,6 +8,15 @@ from sqlalchemy import and_
 from sqlalchemy.engine.base import Engine
 from alembic import command
 from alembic.config import Config
+from urllib.parse import urlparse
+
+# Get DATABASE_URL from environment
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+# Heroku provides DATABASE_URL starting with 'p
+# ostgres://', but SQLAlchemy needs 'postgresql://'
+if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
 # Initialize default database engine
 default_engine = create_engine(DATABASE_URL, echo=False)
