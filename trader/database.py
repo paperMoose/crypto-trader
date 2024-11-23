@@ -93,7 +93,7 @@ def save_order(order_data: Dict[str, Any], session: Optional[Session] = None, en
         if isinstance(order_data.get('order_type'), str):
             order_data['order_type'] = OrderType(order_data['order_type'])
 
-        order = Order(**order_data)
+        order = Order.model_validate(order_data)
         session.add(order)
         session.commit()
         session.refresh(order)
@@ -198,7 +198,7 @@ def save_strategy(strategy_data: Dict[str, Any], session: Optional[Session] = No
         if isinstance(strategy_data.get('state'), str):
             strategy_data['state'] = StrategyState(strategy_data['state'])
 
-        strategy = TradingStrategy(**strategy_data)
+        strategy = TradingStrategy.model_validate(strategy_data)
         session.add(strategy)
         session.commit()
         session.refresh(strategy)

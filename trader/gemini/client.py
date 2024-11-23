@@ -13,6 +13,7 @@ from .schemas import (
     parse_response
 )
 from .enums import OrderSide, OrderType, Symbol, OrderOption
+from .decorators import with_retry
 
 class GeminiClient:
     def __init__(self):
@@ -34,17 +35,17 @@ class GeminiClient:
         signature = hmac.new(self.api_secret, b64, hashlib.sha384).hexdigest()
         return b64, signature
 
+    @with_retry(max_retries=3, base_delay=1.0)
     async def _make_request(self, endpoint, payload):
         if not self.session:
             self.session = aiohttp.ClientSession()
 
         b64_payload, signature = self._generate_signature(payload)
         
-        # Convert bytes to string for the headers
         headers = {
             "Content-Type": "text/plain",
             "X-GEMINI-APIKEY": self.api_key,
-            "X-GEMINI-PAYLOAD": b64_payload.decode('utf-8'),  # Convert bytes to string
+            "X-GEMINI-PAYLOAD": b64_payload.decode('utf-8'),
             "X-GEMINI-SIGNATURE": signature
         }
         url = f"{self.base_url}{endpoint}"
@@ -52,6 +53,7 @@ class GeminiClient:
         async with self.session.post(url, headers=headers) as response:
             return await response.json()
 
+    @with_retry(max_retries=3, base_delay=1.0)
     async def place_order(
         self,
         symbol: Symbol,
@@ -87,6 +89,7 @@ class GeminiClient:
         response = await self._make_request(endpoint, payload)
         return parse_response(response, OrderResponse)
 
+    @with_retry(max_retries=3, base_delay=1.0)
     async def check_order_status(self, order_id: str) -> OrderStatusResponse:
         endpoint = "/v1/order/status"
         payload = {
@@ -97,6 +100,7 @@ class GeminiClient:
         response = await self._make_request(endpoint, payload)
         return parse_response(response, OrderStatusResponse)
 
+    @with_retry(max_retries=3, base_delay=1.0)
     async def get_active_orders(self) -> ActiveOrdersResponse:
         endpoint = "/v1/orders"
         payload = {
@@ -106,6 +110,7 @@ class GeminiClient:
         response = await self._make_request(endpoint, payload)
         return ActiveOrdersResponse.from_response(response)
 
+    @with_retry(max_retries=3, base_delay=1.0)
     async def cancel_order(self, order_id: str) -> CancelOrderResponse:
         endpoint = "/v1/order/cancel"
         payload = {
@@ -116,6 +121,7 @@ class GeminiClient:
         response = await self._make_request(endpoint, payload)
         return parse_response(response, CancelOrderResponse)
 
+    @with_retry(max_retries=3, base_delay=1.0)
     async def get_order_history(self) -> OrderHistoryResponse:
         endpoint = "/v1/orders/history"
         payload = {
@@ -125,6 +131,7 @@ class GeminiClient:
         response = await self._make_request(endpoint, payload)
         return OrderHistoryResponse.from_response(response)
 
+    @with_retry(max_retries=3, base_delay=1.0)
     async def get_price(self, symbol: Symbol) -> str:
         """Get current price for a symbol"""
         endpoint = f"/v1/pubticker/{symbol.value}"
@@ -135,4 +142,4 @@ class GeminiClient:
         url = f"{self.base_url}{endpoint}"
         async with self.session.get(url) as response:
             data = await response.json()
-            return data['last']  # Returns last traded price 
+            return data['last']  # Returns last traded price

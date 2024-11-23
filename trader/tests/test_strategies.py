@@ -105,7 +105,7 @@ async def test_range_strategy_initial_orders(session, mock_gemini_client, range_
     """Test that range strategy places initial buy order correctly"""
     mock_gemini_client.place_order.return_value = type('Response', (), {'order_id': 'test_buy_123'})
     
-    strategy = TradingStrategy(**range_strategy_data)
+    strategy = TradingStrategy.model_validate(range_strategy_data)
     session.add(strategy)
     session.commit()
     
@@ -447,26 +447,29 @@ async def test_strategy_manager_update_orders(session, mock_gemini_client):
     """Test order status updates through manager"""
     manager = StrategyManager(session, mock_gemini_client)
     
-    strategy = TradingStrategy(
-        name="Test Strategy",
-        type=StrategyType.RANGE,
-        symbol="dogeusd",
-        state=StrategyState.ACTIVE,
-        check_interval=10
-    )
+    strategy_data = {
+        "name": "Test Strategy",
+        "type": StrategyType.RANGE,
+        "symbol": "dogeusd",
+        "state": StrategyState.ACTIVE,
+        "check_interval": 10,
+        "config": {}  # Add minimal required config
+    }
+    strategy = TradingStrategy.model_validate(strategy_data)
     strategy = save_strategy(strategy.model_dump(), session)
     
     # Create initial order
-    order = Order(
-        order_id="test_order_123",
-        status=OrderState.ACCEPTED,
-        amount="1000",
-        price="0.35",
-        side=OrderSide.BUY.value,
-        symbol="dogeusd",
-        order_type=OrderType.LIMIT_BUY,
-        strategy_id=strategy.id
-    )
+    order_data = {
+        "order_id": "test_order_123",
+        "status": OrderState.ACCEPTED,
+        "amount": "1000",
+        "price": "0.35",
+        "side": OrderSide.BUY.value,
+        "symbol": "dogeusd",
+        "order_type": OrderType.LIMIT_BUY,
+        "strategy_id": strategy.id
+    }
+    order = Order.model_validate(order_data)
     order = save_order(order.model_dump(), session)
     
     # Mock the order status response
@@ -730,16 +733,17 @@ class TestTakeProfitStrategy:
         mock_service.handle_error = AsyncMock()
         
         # Add a filled sell order to the strategy
-        filled_order = Order(
-            order_id="test_order",
-            status=OrderState.FILLED,
-            amount="10000",
-            price="0.42000",
-            side=OrderSide.SELL.value,
-            symbol="dogeusd",
-            order_type=OrderType.LIMIT_SELL,
-            strategy_id=take_profit_db_strategy.id
-        )
+        order_data = {
+            "order_id": "test_order",
+            "status": OrderState.FILLED,
+            "amount": "10000",
+            "price": "0.42000",
+            "side": OrderSide.SELL.value,
+            "symbol": "dogeusd",
+            "order_type": OrderType.LIMIT_SELL,
+            "strategy_id": take_profit_db_strategy.id
+        }
+        filled_order = Order.model_validate(order_data)
         take_profit_db_strategy.orders = [filled_order]
         
         # Create session mock

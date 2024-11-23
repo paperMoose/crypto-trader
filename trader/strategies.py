@@ -311,3 +311,7 @@ class StrategyManager:
         except Exception as e:
             self.logger.error(f"Error creating strategy: {str(e)}")
             raise
+
+    async def get_active_strategies(self):
+        return await self.service.get_active_strategies()
+        
