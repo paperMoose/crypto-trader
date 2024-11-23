@@ -101,7 +101,7 @@ async def main():
             "check_interval": 3,
             "config": {
                 "current_position": "7500",     # Your current DOGE position
-                "entry_price": "0.42490",       # Current market price
+                "entry_price": "0.3900",       # Current market price
                 "take_profit_price": "0.45000", # Take profit target (+5.9%)
                 "stop_loss_price": "0.41500",   # Stop loss (-2.3%)
                 # Max Gain: $188.25 ((0.45 - 0.4249) * 7500 = $188.25 or 5.9%)
