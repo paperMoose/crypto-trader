@@ -125,19 +125,19 @@ async def main():
             }
         },
         {
-            "name": "DOGE Range 11-23-24 (0.425-0.445)",
+            "name": "DOGE Wide Range 11-25-24",
             "type": StrategyType.RANGE,
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "support_price": "0.42500",    # Current consolidation support
-                "resistance_price": "0.44500",  # Previous support now resistance
-                "amount": "3500",              # ~$1,487 position
-                "stop_loss_price": "0.41500"   # Below recent support structure
-                # Risk: $35 ((0.425 - 0.415) * 3500)
-                # Reward: $70 ((0.445 - 0.425) * 3500)
-                # Capital required: ~$1,487
+                "support_price": "0.42500",    # Current support level
+                "resistance_price": "0.44500",  # Clear resistance level
+                "amount": "2500",              # Moderate position size
+                "stop_loss_price": "0.40375"   # 5% below entry (~0.425)
+                # Risk: $53 ((0.425 - 0.40375) * 2500)
+                # Reward: $50 ((0.445 - 0.425) * 2500)
+                # Capital required: ~$1,062
             }
         }
     ]
