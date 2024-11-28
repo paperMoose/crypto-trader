@@ -1,0 +1,20 @@
+TODO: Implement DOGE Reversal Strategy
+
+1. Models Updates:
+- StrategyType.REVERSAL already exists in models.py ✓
+
+2. Strategy Implementation Plan:
+- Create ReversalStrategy class with:
+  * Entry conditions:
+    - 10% drops from local highs
+    - RSI below 30 (oversold)
+    - Price at support level
+  * Take profit levels:
+    - TP1: +3.9% (0.40000)
+    - TP2: +7.8% (0.41500)
+  * Risk management:
+    - 5% stop loss below entry
+    - Position sizing: 2500 DOGE
+    - Split take profits (50% each level)
+
+3. Required Functions: 

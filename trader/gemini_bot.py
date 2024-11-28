@@ -61,83 +61,51 @@ async def main():
     # Define strategies
     strategies = [
         {
-            "name": "DOGE Range 11-22-24 (0.44-0.47)",
-            "type": StrategyType.RANGE,
-            "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "config": {
-                "support_price": "0.44500",    # New support at previous resistance
-                "resistance_price": "0.47000",  # New resistance level
-                "amount": "3000",              # ~$1,335 position
-                "stop_loss_price": "0.43500"   # Below support
-                # Risk: $30 ((0.445 - 0.435) * 3000)
-                # Reward: $75 ((0.47 - 0.445) * 3000)
-                # Capital required: ~$1,335
-            }
-        },
-        {
-            "name": "DOGE Range 11-22-24 (0.43-0.45)",
+            "name": "DOGE Reversal Hunt 11-28-24",
             "type": StrategyType.RANGE,
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "support_price": "0.43000",    # Strong technical support
-                "resistance_price": "0.45000",  # Previous support becomes resistance
-                "amount": "3500",              # ~$1,505 position
-                "stop_loss_price": "0.42000"   # Below major support
-                # Risk: $35 ((0.43 - 0.42) * 3500)
-                # Reward: $70 ((0.45 - 0.43) * 3500)
-                # Capital required: ~$1,505
+                "support_price": "0.38000",    # Strong support level after 10% drop
+                "resistance_price": "0.41000",  # Previous support becomes resistance
+                "amount": "2000",              # Reduced size for initial position
+                "stop_loss_price": "0.36100"   # 5% below entry
+                # Risk: $38 ((0.38 - 0.361) * 2000)
+                # Reward: $60 ((0.41 - 0.38) * 2000)
+                # Capital required: ~$760
             }
         },
         {
-            "name": "DOGE Range 11-22-24 (0.41-0.43)",
+            "name": "DOGE Deep Reversal 11-28-24",
             "type": StrategyType.RANGE,
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "support_price": "0.41000",    # Previous resistance turned support
-                "resistance_price": "0.43000",  # Previous support becomes resistance
-                "amount": "3500",              # ~$1,435 position
-                "stop_loss_price": "0.40000"   # Below major support
-                # Risk: $35 ((0.41 - 0.40) * 3500)
-                # Reward: $70 ((0.43 - 0.41) * 3500)
-                # Capital required: ~$1,435
+                "support_price": "0.36500",    # Major support if we get bigger drop
+                "resistance_price": "0.39500",  # Previous support becomes resistance
+                "amount": "2500",              # Larger size for better level
+                "stop_loss_price": "0.34675"   # 5% below entry
+                # Risk: $45.62 ((0.365 - 0.34675) * 2500)
+                # Reward: $75 ((0.395 - 0.365) * 2500)
+                # Capital required: ~$912
             }
         },
         {
-            "name": "DOGE Breakout 11-23-24 (Above 0.47)",
-            "type": StrategyType.BREAKOUT,
-            "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "config": {
-                "breakout_price": "0.47100",   # Entry above recent high
-                "amount": "3000",              # ~$1,413 position
-                "take_profit_1": "0.50000",    # First target at psychological level
-                "take_profit_2": "0.52000",    # Second target at next resistance
-                "stop_loss": "0.46000"         # Below recent support
-                # Risk: $33 ((0.471 - 0.46) * 3000)
-                # Reward 1: $87 ((0.50 - 0.471) * 3000)
-                # Reward 2: $147 ((0.52 - 0.471) * 3000)
-                # Capital required: ~$1,413
-            }
-        },
-        {
-            "name": "DOGE Wide Range 11-25-24",
+            "name": "DOGE Extreme Drop 11-28-24",
             "type": StrategyType.RANGE,
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "support_price": "0.42500",    # Current support level
-                "resistance_price": "0.44500",  # Clear resistance level
-                "amount": "2500",              # Moderate position size
-                "stop_loss_price": "0.40375"   # 5% below entry (~0.425)
-                # Risk: $53 ((0.425 - 0.40375) * 2500)
-                # Reward: $50 ((0.445 - 0.425) * 2500)
-                # Capital required: ~$1,062
+                "support_price": "0.35000",    # Major psychological support
+                "resistance_price": "0.38000",  # Previous support becomes resistance
+                "amount": "3000",              # Largest size for best level
+                "stop_loss_price": "0.33250"   # 5% below entry
+                # Risk: $52.5 ((0.35 - 0.3325) * 3000)
+                # Reward: $90 ((0.38 - 0.35) * 3000)
+                # Capital required: ~$1,050
             }
         }
     ]
