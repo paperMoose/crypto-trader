@@ -61,51 +61,19 @@ async def main():
     # Define strategies
     strategies = [
         {
-            "name": "DOGE Reversal Hunt 11-28-24",
+            "name": "DOGE Range Strategy 11/29/24",
             "type": StrategyType.RANGE,
             "symbol": "dogeusd",
             "state": StrategyState.ACTIVE,
-            "check_interval": 3,
+            "check_interval": 5,  # Longer interval to avoid noise
             "config": {
-                "support_price": "0.38000",    # Strong support level after 10% drop
-                "resistance_price": "0.41000",  # Previous support becomes resistance
-                "amount": "2000",              # Reduced size for initial position
-                "stop_loss_price": "0.36100"   # 5% below entry
-                # Risk: $38 ((0.38 - 0.361) * 2000)
-                # Reward: $60 ((0.41 - 0.38) * 2000)
-                # Capital required: ~$760
-            }
-        },
-        {
-            "name": "DOGE Deep Reversal 11-28-24",
-            "type": StrategyType.RANGE,
-            "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "check_interval": 3,
-            "config": {
-                "support_price": "0.36500",    # Major support if we get bigger drop
-                "resistance_price": "0.39500",  # Previous support becomes resistance
-                "amount": "2500",              # Larger size for better level
-                "stop_loss_price": "0.34675"   # 5% below entry
-                # Risk: $45.62 ((0.365 - 0.34675) * 2500)
-                # Reward: $75 ((0.395 - 0.365) * 2500)
-                # Capital required: ~$912
-            }
-        },
-        {
-            "name": "DOGE Extreme Drop 11-28-24",
-            "type": StrategyType.RANGE,
-            "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "check_interval": 3,
-            "config": {
-                "support_price": "0.35000",    # Major psychological support
-                "resistance_price": "0.38000",  # Previous support becomes resistance
-                "amount": "3000",              # Largest size for best level
-                "stop_loss_price": "0.33250"   # 5% below entry
-                # Risk: $52.5 ((0.35 - 0.3325) * 3000)
-                # Reward: $90 ((0.38 - 0.35) * 3000)
-                # Capital required: ~$1,050
+                "support_price": "0.40000",    # Major psychological support
+                "resistance_price": "0.43000",  # Wider range for better R:R
+                "amount": "2000",              # Single position size
+                "stop_loss_price": "0.38500"   # More room for price movement
+                # Risk: $30 ((0.40 - 0.385) * 2000)
+                # Reward: $60 ((0.43 - 0.40) * 2000)
+                # Better 2:1 reward-to-risk ratio
             }
         }
     ]
@@ -114,19 +82,24 @@ async def main():
         # Get current strategy names
         current_strategy_names = {s["name"] for s in strategies}
         
-        # Deactivate removed strategies
-        await deactivate_removed_strategies(manager, session, current_strategy_names)
-        
-        # Process each strategy
-        for strategy_data in strategies:
-            await update_or_create_strategy(manager, strategy_data)
-        
-        logger.info("Starting strategy monitor...")
+        if strategies:  # Only log if we have strategies
+            # Deactivate removed strategies
+            await deactivate_removed_strategies(manager, session, current_strategy_names)
+            
+            # Process each strategy
+            for strategy_data in strategies:
+                await update_or_create_strategy(manager, strategy_data)
+            
+            logger.info("Starting strategy monitor...")
+        else:
+            logger.info("No strategies defined. Starting monitor in passive mode...")
+            
         # Start monitoring - this will run indefinitely
         await manager.monitor_strategies()
         
     except Exception as e:
-        logger.error(f"Error running strategies: {str(e)}")
+        if strategies:  # Only log error if we had strategies
+            logger.error(f"Error running strategies: {str(e)}")
         raise
     finally:
         session.close()

@@ -1,20 +1,61 @@
 TODO: Implement DOGE Reversal Strategy
 
-1. Models Updates:
-- StrategyType.REVERSAL already exists in models.py ✓
+1. Current Implementation (Using RANGE Strategy):
+- Three-level scaling entry ✓
+  * Level 1: 0.38000 (2000 DOGE)
+  * Level 2: 0.36500 (2500 DOGE)
+  * Level 3: 0.35000 (3000 DOGE)
 
-2. Strategy Implementation Plan:
-- Create ReversalStrategy class with:
-  * Entry conditions:
-    - 10% drops from local highs
-    - RSI below 30 (oversold)
-    - Price at support level
-  * Take profit levels:
-    - TP1: +3.9% (0.40000)
-    - TP2: +7.8% (0.41500)
-  * Risk management:
-    - 5% stop loss below entry
-    - Position sizing: 2500 DOGE
-    - Split take profits (50% each level)
+2. Future Improvements:
+- Add trailing stop functionality:
+  * Move stop loss up as price increases
+  * Lock in profits on strong bounces
+  * Consider 3% trailing distance
 
-3. Required Functions: 
+- Add position management features:
+  * Scale out on the way up (partial take profits)
+  * Move stop to break-even after partial fills
+  * Dynamic position sizing based on volatility
+
+3. Technical Indicators to Add:
+  * RSI for oversold confirmation
+  * Volume profile for support/resistance
+  * Multiple timeframe analysis (1H, 4H)
+  * MACD for trend confirmation
+
+4. Risk Management Enhancements:
+  * Maximum total position size limits
+  * Daily loss limits
+  * Profit taking rules
+  * Maximum number of concurrent positions
+
+5. Monitoring Improvements:
+  * Price alerts at key levels
+  * Notification system for fills
+  * Daily P&L reporting
+  * Strategy performance metrics
+
+6. Testing Requirements:
+  * Unit tests for trailing stop logic
+  * Integration tests for order management
+  * Test scenarios for partial fills
+  * Performance testing with historical data
+
+7. Logging & Error Tracking:
+  * Implement Sentry for error tracking
+  * Structured logging for all trades:
+    - Entry/exit prices
+    - Position sizes
+    - P&L per trade
+    - Execution times
+    - Order fill details
+  * Performance metrics logging:
+    - Strategy win rate
+    - Average R:R ratio
+    - Drawdown tracking
+    - Volume analysis
+  * System health logging:
+    - API response times
+    - Order execution latency
+    - Database performance
+    - Memory usage

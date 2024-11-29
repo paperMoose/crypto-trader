@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 class BaseStrategy(ABC):
     def __init__(self, client: GeminiClient):
         self.client = client
+        self.logger = logging.getLogger(self.__class__.__name__)
     
     @abstractmethod
     async def execute(self, strategy: TradingStrategy, session: Session) -> None:
@@ -23,6 +24,12 @@ class BaseStrategy(ABC):
     def validate_config(self, config: Dict[str, Any]) -> bool:
         """Validate strategy configuration"""
         pass
+    
+    def log_execution(self, strategy: TradingStrategy, message: str, level: str = "info"):
+        """Conditional logging for strategy execution"""
+        if strategy.is_active:
+            log_func = getattr(self.logger, level)
+            log_func(f"{strategy.name}: {message}")
 
 class RangeStrategy(BaseStrategy):
     def __init__(self, client: GeminiClient):
@@ -258,33 +265,42 @@ class StrategyManager:
 
     async def monitor_strategies(self):
         """Monitor and execute all active strategies"""
-        self.logger.info("Starting strategy monitor loop\n")
+        first_run = True
         
         while True:
             try:
                 # Get active strategies from service
                 strategies = await self.service.get_active_strategies()
-                self.logger.info(f"Found {len(strategies)} active strategies\n")
                 
-                for strategy in strategies:
-                    self.logger.debug(f"Checking strategy: {strategy.name}")
+                # Only log if we have active strategies
+                if strategies:
+                    if first_run:
+                        self.logger.info(f"Starting strategy monitor with {len(strategies)} active strategies\n")
+                        first_run = False
                     
-                    # Check if it's time to execute strategy based on check_interval
-                    if await self.service.should_execute_strategy(strategy):
-                        self.logger.info(f"Executing strategy: {strategy.name} (Type: {strategy.type})")
+                    for strategy in strategies:
+                        self.logger.debug(f"Checking strategy: {strategy.name}")
                         
-                        # Execute strategy logic
-                        await self.strategies[strategy.type].execute(strategy, self.session)
-                        
-                        # Update last checked timestamp
-                        await self.service.update_strategy_timestamp(strategy)
-                        
-                        self.logger.info(f"Strategy execution completed: {strategy.name}\n")
+                        # Check if it's time to execute strategy based on check_interval
+                        if await self.service.should_execute_strategy(strategy):
+                            self.logger.info(f"Executing strategy: {strategy.name} (Type: {strategy.type})")
+                            
+                            # Execute strategy logic
+                            await self.strategies[strategy.type].execute(strategy, self.session)
+                            
+                            # Update last checked timestamp
+                            await self.service.update_strategy_timestamp(strategy)
+                            
+                            self.logger.info(f"Strategy execution completed: {strategy.name}\n")
+                elif first_run:
+                    self.logger.info("No active strategies found. Monitoring...\n")
+                    first_run = False
 
                 await asyncio.sleep(1)  # Prevent tight loop
                 
             except Exception as e:
-                self.logger.error(f"Error monitoring strategies: {str(e)}\n", exc_info=True)
+                if strategies:  # Only log errors if we have active strategies
+                    self.logger.error(f"Error monitoring strategies: {str(e)}\n", exc_info=True)
                 await asyncio.sleep(5)  # Back off on error
 
     async def update_strategy_orders(self, strategy_data):
