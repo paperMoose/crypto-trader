@@ -75,6 +75,33 @@ async def main():
                 # Reward: $60 ((0.43 - 0.40) * 2000)
                 # Better 2:1 reward-to-risk ratio
             }
+        },
+        {
+            "name": "DOGE Mid-Range Oscillator 11/29/24",
+            "type": StrategyType.RANGE,
+            "symbol": "dogeusd",
+            "state": StrategyState.ACTIVE,
+            "check_interval": 5,
+            "config": {
+                "support_price": "0.41000",
+                "resistance_price": "0.42000",
+                "amount": "1500",
+                "stop_loss_price": "0.40800"
+            }
+        },
+        {
+            "name": "DOGE Breakout Strategy 11/29/24",
+            "type": StrategyType.BREAKOUT,
+            "symbol": "dogeusd",
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "breakout_price": "0.43000",
+                "amount": "1500",
+                "take_profit_1": "0.45000",
+                "take_profit_2": "0.46000",
+                "stop_loss": "0.42000"
+            }
         }
     ]
     
