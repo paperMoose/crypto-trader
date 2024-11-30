@@ -102,6 +102,36 @@ async def main():
                 "take_profit_2": "0.46000",
                 "stop_loss": "0.42000"
             }
+        },
+                {
+            "name": "DOGE Breakout Strategy 11/30/24",
+            "type": StrategyType.BREAKOUT,
+            "symbol": "dogeusd",
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "breakout_price": "0.43000",
+                "amount": "1500",
+                "take_profit_1": "0.44290",  # 3% gain from breakout
+                "take_profit_2": "0.44720",  # Additional 1%
+                "stop_loss": "0.42000"
+            }
+        },
+        {
+            "name": "DOGE Current Range Strategy 11/29/24",
+            "type": StrategyType.RANGE,
+            "symbol": "dogeusd",
+            "state": StrategyState.ACTIVE,
+            "check_interval": 5,
+            "config": {
+                "support_price": "0.42600",    # Current support level from chart
+                "resistance_price": "0.43300",  # Current resistance level from chart
+                "amount": "1500",              # Conservative position size
+                "stop_loss_price": "0.42000"   # Wider stop for more room
+                # Risk: $90 ((0.426 - 0.420) * 1500)
+                # Reward: $105 ((0.433 - 0.426) * 1500)
+                # 1.17:1 reward-to-risk ratio
+            }
         }
     ]
     
