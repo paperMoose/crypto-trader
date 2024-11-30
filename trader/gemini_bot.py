@@ -132,6 +132,22 @@ async def main():
                 # Reward: $105 ((0.433 - 0.426) * 1500)
                 # 1.17:1 reward-to-risk ratio
             }
+        },
+                {
+            "name": "SOL Range Strategy 11/30/24",
+            "type": StrategyType.RANGE,
+            "symbol": "solusd",
+            "state": StrategyState.ACTIVE,
+            "check_interval": 5,
+            "config": {
+                "support_price": "240.400",    # Strong support level from chart
+                "resistance_price": "242.752",  # Higher resistance target
+                "amount": "5",                 # Conservative position size
+                "stop_loss_price": "239.800"   # Below support with room for noise
+                # Risk: $3 ((240.40 - 239.80) * 5)
+                # Reward: $11.76 ((242.752 - 240.40) * 5)
+                # 3.92:1 reward-to-risk ratio - better R:R with higher resistance
+            }
         }
     ]
     
