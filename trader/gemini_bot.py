@@ -60,93 +60,35 @@ async def main():
     
     # Define strategies
     strategies = [
+
+        #         {
+        #     "name": "DOGE Breakout Strategy 11/30/24",
+        #     "type": StrategyType.BREAKOUT,
+        #     "symbol": "dogeusd",
+        #     "state": StrategyState.ACTIVE,
+        #     "check_interval": 3,
+        #     "config": {
+        #         "breakout_price": "0.43000",
+        #         "amount": "1500",
+        #         "take_profit_1": "0.44290",  # 3% gain from breakout
+        #         "take_profit_2": "0.44720",  # Additional 1%
+        #         "stop_loss": "0.42000"
+        #     }
+        # },
         {
-            "name": "DOGE Range Strategy 11/29/24",
-            "type": StrategyType.RANGE,
-            "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "check_interval": 5,  # Longer interval to avoid noise
-            "config": {
-                "support_price": "0.40000",    # Major psychological support
-                "resistance_price": "0.43000",  # Wider range for better R:R
-                "amount": "2000",              # Single position size
-                "stop_loss_price": "0.38500"   # More room for price movement
-                # Risk: $30 ((0.40 - 0.385) * 2000)
-                # Reward: $60 ((0.43 - 0.40) * 2000)
-                # Better 2:1 reward-to-risk ratio
-            }
-        },
-        {
-            "name": "DOGE Mid-Range Oscillator 11/29/24",
-            "type": StrategyType.RANGE,
-            "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "check_interval": 5,
-            "config": {
-                "support_price": "0.41000",
-                "resistance_price": "0.42000",
-                "amount": "1500",
-                "stop_loss_price": "0.40800"
-            }
-        },
-        {
-            "name": "DOGE Breakout Strategy 11/29/24",
-            "type": StrategyType.BREAKOUT,
-            "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "check_interval": 3,
-            "config": {
-                "breakout_price": "0.43000",
-                "amount": "1500",
-                "take_profit_1": "0.45000",
-                "take_profit_2": "0.46000",
-                "stop_loss": "0.42000"
-            }
-        },
-                {
-            "name": "DOGE Breakout Strategy 11/30/24",
-            "type": StrategyType.BREAKOUT,
-            "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "check_interval": 3,
-            "config": {
-                "breakout_price": "0.43000",
-                "amount": "1500",
-                "take_profit_1": "0.44290",  # 3% gain from breakout
-                "take_profit_2": "0.44720",  # Additional 1%
-                "stop_loss": "0.42000"
-            }
-        },
-        {
-            "name": "DOGE Current Range Strategy 11/29/24",
-            "type": StrategyType.RANGE,
-            "symbol": "dogeusd",
-            "state": StrategyState.ACTIVE,
-            "check_interval": 5,
-            "config": {
-                "support_price": "0.42600",    # Current support level from chart
-                "resistance_price": "0.43300",  # Current resistance level from chart
-                "amount": "1500",              # Conservative position size
-                "stop_loss_price": "0.42000"   # Wider stop for more room
-                # Risk: $90 ((0.426 - 0.420) * 1500)
-                # Reward: $105 ((0.433 - 0.426) * 1500)
-                # 1.17:1 reward-to-risk ratio
-            }
-        },
-                {
-            "name": "SOL Range Strategy 11/30/24",
+            "name": "SOL Range Strategy 12/1/24",
             "type": StrategyType.RANGE,
             "symbol": "solusd",
             "state": StrategyState.ACTIVE,
             "check_interval": 5,
             "config": {
-                "support_price": "240.400",    # Strong support level from chart
-                "resistance_price": "242.752",  # Higher resistance target
-                "amount": "5",                 # Conservative position size
-                "stop_loss_price": "239.800"   # Below support with room for noise
-                # Risk: $3 ((240.40 - 239.80) * 5)
-                # Reward: $11.76 ((242.752 - 240.40) * 5)
-                # 3.92:1 reward-to-risk ratio - better R:R with higher resistance
+                "support_price": "237.290",    # Just below current ask, above bid cluster
+                "resistance_price": "244.623",  # ~3.1% upside target, avoiding round number
+                "amount": "5",                 
+                "stop_loss_price": "236.623"   # Below visible support levels
+                # Risk: $3.34 ((237.290 - 236.623) * 5)
+                # Reward: $36.67 ((244.623 - 237.290) * 5)
+                # 11:1 reward-to-risk ratio
             }
         }
     ]
