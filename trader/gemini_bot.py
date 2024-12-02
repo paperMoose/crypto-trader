@@ -124,17 +124,17 @@ async def main():
             }
         },
         {
-            "name": "XRP BB Breakout Strategy fixed 12/1/24",
+            "name": "XRP BB Breakout Strategy take 2 12/1/24",
             "type": StrategyType.BREAKOUT,
             "symbol": Symbol.XRPUSD,
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "breakout_price": "2.3500",   # Entry above current consolidation
-                "stop_loss_price": "2.2838",  # Middle BB as strong support
+                "breakout_price": "2.4200",   # Entry above current consolidation
+                "stop_loss_price": "2.3600",  # Middle BB as strong support
                 "amount": "250",              # Position size
-                "take_profit_1": "2.4400",    # First target at resistance cluster
-                "take_profit_2": "2.4900"     # Extended target with momentum
+                "take_profit_1": "2.475",    # First target at resistance cluster
+                "take_profit_2": "2.535"     # Extended target with momentum
             }
         }
     ]
