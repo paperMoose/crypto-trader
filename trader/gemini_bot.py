@@ -94,22 +94,22 @@ async def main():
         #         # 4.5:1 reward-to-risk ratio
         #     }
         # },
-        {
-            "name": "DOGE BB Pullback Strategy 12/1/24",
-            "type": StrategyType.RANGE,
-            "symbol": Symbol.DOGEUSD,
-            "state": StrategyState.ACTIVE,
-            "check_interval": 5,
-            "config": {
-                "support_price": "0.43700",    # Strong support from order book
-                "resistance_price": "0.44500",  # Recent resistance level
-                "amount": "2500",              # Keep same position size
-                "stop_loss_price": "0.43200"   # Below current consolidation
-                # Risk: $12.50 ((0.43700 - 0.43200) * 2500)
-                # Reward: $20.00 ((0.44500 - 0.43700) * 2500)
-                # Improved Reward-to-Risk Ratio: 1.6:1
-            }
-        },
+        # {
+        #     "name": "DOGE BB Pullback Strategy 12/1/24",
+        #     "type": StrategyType.RANGE,
+        #     "symbol": Symbol.DOGEUSD,
+        #     "state": StrategyState.ACTIVE,
+        #     "check_interval": 5,
+        #     "config": {
+        #         "support_price": "0.43700",    # Strong support from order book
+        #         "resistance_price": "0.44500",  # Recent resistance level
+        #         "amount": "2500",              # Keep same position size
+        #         "stop_loss_price": "0.43200"   # Below current consolidation
+        #         # Risk: $12.50 ((0.43700 - 0.43200) * 2500)
+        #         # Reward: $20.00 ((0.44500 - 0.43700) * 2500)
+        #         # Improved Reward-to-Risk Ratio: 1.6:1
+        #     }
+        # }, failed
         # {
         #     "name": "DOGE BB Breakout Strategy 12/1/24",
         #     "type": StrategyType.BREAKOUT,
@@ -127,9 +127,9 @@ async def main():
         #         # Reward T2: $45 ((0.47000 - 0.46100) * 5000)
         #         # Average Reward-to-Risk: 1.33:1
         #     }
-        # },
+        # }, failed 
         {
-            "name": "DOGE BB Reversal Strategy 12/1/24",
+            "name": "DOGE BB Reversal Strategy take 2 12/1/24",
             "type": StrategyType.RANGE,
             "symbol": Symbol.DOGEUSD,
             "state": StrategyState.ACTIVE,
@@ -155,7 +155,7 @@ async def main():
         #         "resistance_price": "2.4200", # Near upper BB resistance
         #         "amount": "250",             # Position size
         #         "stop_loss_price": "2.2600"  # Below middle BB
-        #     }
+        #     } success
         # },
         # {
         #     "name": "XRP BB Breakout Strategy take 2 12/1/24",
@@ -170,9 +170,9 @@ async def main():
         #         "take_profit_1": "2.475",    # First target at resistance cluster
         #         "take_profit_2": "2.535"     # Extended target with momentum
         #     }
-        # }
+        # } failed
         {
-            "name": "XRP Momentum Continuation 12/2/24",
+            "name": "XRP Momentum Continuation 2 12/2/24",
             "type": StrategyType.BREAKOUT,
             "symbol": Symbol.XRPUSD,
             "state": StrategyState.ACTIVE,
@@ -187,6 +187,22 @@ async def main():
                 # Reward T1: $8 ((2.5000 - 2.4600) * 100)
                 # Reward T2: $22 ((2.5700 - 2.4600) * 100)
                 # Average Reward-to-Risk: 1.875:1
+            }
+        },
+        {
+            "name": "SOL Range Strategy take 3 12/2/24",
+            "type": StrategyType.RANGE,
+            "symbol": Symbol.SOLUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "support_price": "228.00",     # Strong order book support
+                "resistance_price": "229.50",   # Near-term resistance
+                "amount": "5",                  # Increased position size for better profit potential
+                "stop_loss_price": "227.50"     # Below BB lower band
+                # Risk: $2.50 ((228.00 - 227.50) * 5)
+                # Reward: $7.50 ((229.50 - 228.00) * 5)
+                # 3:1 reward-to-risk ratio with higher position size
             }
         }
     ]
