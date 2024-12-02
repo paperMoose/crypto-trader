@@ -2,6 +2,7 @@ import asyncio
 import logging
 from trader.database import init_db, get_engine, get_session, get_strategy_by_name
 from trader.gemini.client import GeminiClient
+from trader.gemini.enums import Symbol
 from trader.models import StrategyState, StrategyType
 from trader.strategies import StrategyManager
 from sqlmodel import select
@@ -75,22 +76,23 @@ async def main():
         #         "stop_loss": "0.42000"
         #     }
         # },
-        {
-            "name": "SOL Range Strategy 12/1/24",
-            "type": StrategyType.RANGE,
-            "symbol": "solusd",
-            "state": StrategyState.ACTIVE,
-            "check_interval": 5,
-            "config": {
-                "support_price": "237.290",    # Just below current ask, above bid cluster
-                "resistance_price": "244.623",  # ~3.1% upside target, avoiding round number
-                "amount": "5",                 
-                "stop_loss_price": "236.623"   # Below visible support levels
-                # Risk: $3.34 ((237.290 - 236.623) * 5)
-                # Reward: $36.67 ((244.623 - 237.290) * 5)
-                # 11:1 reward-to-risk ratio
-            }
+    {
+        "name": "SOL Range Strategy 12/1/24",
+        "type": StrategyType.RANGE,
+        "symbol": Symbol.SOLUSD,
+        "state": StrategyState.ACTIVE,
+        "check_interval": 5,
+        "config": {
+            "support_price": "233.50",    # Aligned with visible support and lower Bollinger Band
+            "resistance_price": "239.50",  # Conservative resistance, near upper Bollinger Band
+            "amount": "5",                 # Trading 5 SOL in this strategy
+            "stop_loss_price": "231.50",   # Tight stop just below next significant support at $233
+            # Risk: $10.00 ((233.50 - 231.50) * 5)
+            # Reward: $30.00 ((239.50 - 233.50) * 5)
+            # 3:1 reward-to-risk ratio
         }
+    }
+
     ]
     
     try:

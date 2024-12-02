@@ -11,6 +11,7 @@ class OrderType(str, Enum):
 class Symbol(str, Enum):
     DOGEUSD = "dogeusd"
     BTCUSD = "btcusd"
+    SOLUSD = "solusd"
     # Add other symbols as needed
 
 class OrderOption(str, Enum):
