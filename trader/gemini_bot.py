@@ -101,13 +101,13 @@ async def main():
             "state": StrategyState.ACTIVE,
             "check_interval": 5,
             "config": {
-                "support_price": "0.421",    # Entry slightly above support for a higher fill likelihood
-                "resistance_price": "0.449", # Exit slightly below resistance for a higher fill likelihood
-                "amount": "5000",          # Trading 5000 DOGE
-                "stop_loss_price": "0.414",  # Stop-loss below visible support zone
-                # Risk: $35 ((0.421 - 0.414) * 5000 DOGE)
-                # Reward: $140 ((0.449 - 0.421) * 5000 DOGE)
-                # Reward-to-Risk Ratio: 4:1
+                "support_price": "0.44869",    # Previous resistance becomes support
+                "resistance_price": "0.46200", # Next resistance from order book
+                "amount": "5000",             # Position size
+                "stop_loss_price": "0.44500"  # Below new support
+                # Risk: $18.45 ((0.44869 - 0.44500) * 5000)
+                # Reward: $66.55 ((0.46200 - 0.44869) * 5000)
+                # Reward-to-Risk Ratio: 3.6:1
             }
         },
         {
