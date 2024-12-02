@@ -108,8 +108,41 @@ async def main():
         # Reward: $140 ((0.449 - 0.421) * 5000 DOGE)
         # Reward-to-Risk Ratio: 4:1
     }
-}
-
+},
+        {
+            "name": "XRP BB Bounce Strategy 12/1/24",
+            "type": StrategyType.RANGE,
+            "symbol": Symbol.XRPUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 5,
+            "config": {
+                "support_price": "2.2838",    # Middle BB as strong support
+                "resistance_price": "2.4200", # Near upper BB resistance
+                "amount": "250",             # Position size
+                "stop_loss_price": "2.2600"  # Below middle BB
+                # Risk: $5.95 ((2.2838 - 2.2600) * 250 XRP)
+                # Reward: $34.05 ((2.4200 - 2.2838) * 250 XRP)
+                # Reward-to-Risk Ratio: 5.7:1
+            }
+        },
+        {
+            "name": "XRP BB Breakout Strategy 12/1/24",
+            "type": StrategyType.BREAKOUT,
+            "symbol": Symbol.XRPUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,             # Quick execution for momentum
+            "config": {
+                "entry_price": "2.3500",     # Entry above current consolidation
+                "stop_loss_price": "2.2838", # Middle BB as strong support
+                "amount": "250",             # Position size
+                "primary_target": "2.4400",  # First target at resistance cluster
+                "secondary_target": "2.4900" # Extended target with momentum
+                # Risk: $16.55 ((2.3500 - 2.2838) * 250 XRP)
+                # Reward T1: $22.50 ((2.4400 - 2.3500) * 250 XRP)
+                # Reward T2: $35.00 ((2.4900 - 2.3500) * 250 XRP)
+                # Average Reward-to-Risk: 1.73:1
+            }
+        }
     ]
     
     try:
