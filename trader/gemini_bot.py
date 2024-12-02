@@ -61,38 +61,38 @@ async def main():
     
     # Define strategies
     strategies = [
-
-        #         {
-        #     "name": "DOGE Breakout Strategy 11/30/24",
-        #     "type": StrategyType.BREAKOUT,
-        #     "symbol": "dogeusd",
-        #     "state": StrategyState.ACTIVE,
-        #     "check_interval": 3,
-        #     "config": {
-        #         "breakout_price": "0.43000",
-        #         "amount": "1500",
-        #         "take_profit_1": "0.44290",  # 3% gain from breakout
-        #         "take_profit_2": "0.44720",  # Additional 1%
-        #         "stop_loss": "0.42000"
-        #     }
-        # },
-    {
-        "name": "SOL Range Strategy 12/1/24",
-        "type": StrategyType.RANGE,
-        "symbol": Symbol.SOLUSD,
-        "state": StrategyState.ACTIVE,
-        "check_interval": 5,
-        "config": {
-            "support_price": "233.50",    # Aligned with visible support and lower Bollinger Band
-            "resistance_price": "239.50",  # Conservative resistance, near upper Bollinger Band
-            "amount": "5",                 # Trading 5 SOL in this strategy
-            "stop_loss_price": "231.50",   # Tight stop just below next significant support at $233
-            # Risk: $10.00 ((233.50 - 231.50) * 5)
-            # Reward: $30.00 ((239.50 - 233.50) * 5)
-            # 3:1 reward-to-risk ratio
+        {
+            "name": "SOL Range Strategy take 2 12/1/24",
+            "type": StrategyType.RANGE,
+            "symbol": Symbol.SOLUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 5,
+            "config": {
+                "support_price": "233.50",    
+                "resistance_price": "239.50",  
+                "amount": "5",                 
+                "stop_loss_price": "231.50",   
+                # Risk: $10.00 ((233.50 - 231.50) * 5)
+                # Reward: $30.00 ((239.50 - 233.50) * 5)
+                # 3:1 reward-to-risk ratio
+            }
+        },
+        {
+            "name": "SOL Take Profit Strategy 12/1/24",
+            "type": StrategyType.TAKE_PROFIT,
+            "symbol": Symbol.SOLUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 5,
+            "config": {
+                "current_position": "5.000937",  # Your existing position
+                "entry_price": "241.02",        # Approximate entry price
+                "take_profit_price": "242.50",  # About 3.85% gain target
+                "stop_loss_price": "231.50"     # About 0.85% risk
+                # Risk: $10.00 ((233.50 - 231.50) * 5.000937)
+                # Reward: $45.00 ((242.50 - 233.50) * 5.000937)
+                # 4.5:1 reward-to-risk ratio
+            }
         }
-    }
-
     ]
     
     try:
