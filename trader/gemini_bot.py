@@ -47,7 +47,8 @@ async def update_or_create_strategy(manager: StrategyManager, strategy_data: dic
         
     except Exception as e:
         logger.error(f"Error processing strategy {strategy_data['name']}: {str(e)}")
-        raise
+        # Don't raise the error, just log it and continue
+        return
 
 async def main():
     # Initialize database and clients
@@ -55,10 +56,10 @@ async def main():
     init_db()
     session = get_session(engine)
     client = GeminiClient()
-    
+
     # Initialize strategy manager
     manager = StrategyManager(session, client)
-    
+
     # Define strategies
     strategies = [
         {
@@ -94,21 +95,21 @@ async def main():
             }
         },
         {
-    "name": "DOGE Range Strategy 12/1/24",
-    "type": StrategyType.RANGE,
-    "symbol": Symbol.DOGEUSD,
-    "state": StrategyState.ACTIVE,
-    "check_interval": 5,
-    "config": {
-        "support_price": "0.421",    # Entry slightly above support for a higher fill likelihood
-        "resistance_price": "0.449", # Exit slightly below resistance for a higher fill likelihood
-        "amount": "5000",          # Trading 5000 DOGE
-        "stop_loss_price": "0.414",  # Stop-loss below visible support zone
-        # Risk: $35 ((0.421 - 0.414) * 5000 DOGE)
-        # Reward: $140 ((0.449 - 0.421) * 5000 DOGE)
-        # Reward-to-Risk Ratio: 4:1
-    }
-},
+            "name": "DOGE Range Strategy 12/1/24",
+            "type": StrategyType.RANGE,
+            "symbol": Symbol.DOGEUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 5,
+            "config": {
+                "support_price": "0.421",    # Entry slightly above support for a higher fill likelihood
+                "resistance_price": "0.449", # Exit slightly below resistance for a higher fill likelihood
+                "amount": "5000",          # Trading 5000 DOGE
+                "stop_loss_price": "0.414",  # Stop-loss below visible support zone
+                # Risk: $35 ((0.421 - 0.414) * 5000 DOGE)
+                # Reward: $140 ((0.449 - 0.421) * 5000 DOGE)
+                # Reward-to-Risk Ratio: 4:1
+            }
+        },
         {
             "name": "XRP BB Bounce Strategy 12/1/24",
             "type": StrategyType.RANGE,
@@ -137,7 +138,7 @@ async def main():
             }
         }
     ]
-    
+
     try:
         # Get current strategy names
         current_strategy_names = {s["name"] for s in strategies}
@@ -156,11 +157,12 @@ async def main():
             
         # Start monitoring - this will run indefinitely
         await manager.monitor_strategies()
-        
+
     except Exception as e:
         if strategies:  # Only log error if we had strategies
             logger.error(f"Error running strategies: {str(e)}")
-        raise
+            # Don't raise the error, just log it and continue running
+        await manager.monitor_strategies()  # Continue monitoring anyway
     finally:
         session.close()
 
@@ -168,6 +170,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Bot stopped by user")
+        print("Bot stopped by user")
     except Exception as e:
-        logger.error(f"Bot stopped due to error: {str(e)}")
+        print(f"Bot stopped due to critical error: {str(e)}")
+        raise
