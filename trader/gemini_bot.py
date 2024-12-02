@@ -92,7 +92,24 @@ async def main():
                 # Reward: $45.00 ((242.50 - 233.50) * 5.000937)
                 # 4.5:1 reward-to-risk ratio
             }
-        }
+        },
+        {
+    "name": "DOGE Range Strategy 12/1/24",
+    "type": StrategyType.RANGE,
+    "symbol": Symbol.DOGEUSD,
+    "state": StrategyState.ACTIVE,
+    "check_interval": 5,
+    "config": {
+        "support_price": "0.421",    # Entry slightly above support for a higher fill likelihood
+        "resistance_price": "0.449", # Exit slightly below resistance for a higher fill likelihood
+        "amount": "5000",          # Trading 5000 DOGE
+        "stop_loss_price": "0.414",  # Stop-loss below visible support zone
+        # Risk: $35 ((0.421 - 0.414) * 5000 DOGE)
+        # Reward: $140 ((0.449 - 0.421) * 5000 DOGE)
+        # Reward-to-Risk Ratio: 4:1
+    }
+}
+
     ]
     
     try:
