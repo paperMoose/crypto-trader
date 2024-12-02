@@ -126,13 +126,73 @@ Example for XRP BB Strategy:
 }
 ```
 
+## Error Handling & Strategy Isolation
+- Implement robust error handling to prevent single strategy failures from stopping entire bot
+  
+  1. Strategy-Level Error Handling:
+     * Isolate each strategy's execution in its own try-catch block
+     * Log strategy-specific errors without propagating to main loop
+     * Mark failed strategies as FAILED state instead of stopping bot
+     * Implement automatic retry mechanism with exponential backoff
+     * Add max retry attempts before permanently disabling strategy
+
+  2. Error Classification System:
+     * Categorize errors by severity:
+       - CRITICAL: Requires bot shutdown (API keys invalid, account issues)
+       - SEVERE: Disable specific strategy (invalid config, persistent errors)
+       - WARNING: Log and retry (temporary API issues, rate limits)
+       - INFO: Log only (order partially filled, minor issues)
+
+  3. Strategy Health Monitoring:
+     * Track error frequency per strategy
+     * Implement circuit breaker pattern:
+       - Disable strategies that fail too frequently
+       - Auto-enable after cool-down period
+       - Alert on repeated failures
+     * Monitor strategy error rates and patterns
+
+  4. Recovery Mechanisms:
+     * Implement graceful degradation:
+       - Continue running healthy strategies
+       - Attempt to recover failed strategies in background
+       - Maintain partial system functionality
+     * Add strategy state recovery:
+       - Persist strategy state before operations
+       - Recover from last known good state
+       - Handle incomplete operations
+
+  5. Logging Enhancements:
+     * Add detailed error context:
+       - Strategy configuration
+       - Market conditions
+       - Order status
+       - System state
+     * Implement structured error logging:
+       ```json
+       {
+           "strategy_name": "XRP BB Breakout Strategy",
+           "error_type": "ConfigurationError",
+           "severity": "SEVERE",
+           "timestamp": "2023-12-01T17:46:55",
+           "context": {
+               "config": {...},
+               "market_state": {...},
+               "previous_errors": [...]
+           }
+       }
+       ```
+
 ## Priority
-- High: This feature is critical for maintaining trade validity and reducing risk
-- Implementation should be done before adding more complex strategies
+- Critical: Implement basic strategy isolation immediately
+- High: Add error classification and recovery mechanisms
+- Medium: Enhance logging and monitoring systems
 
 ## Next Steps
-1. Design entry condition schema
-2. Implement condition documentation in strategy creation
-3. Build monitoring system
-4. Create exit signal generation logic
-5. Add to strategy manager workflow
+1. Refactor main loop to handle strategy errors independently
+2. Implement error classification system
+3. Add strategy state persistence
+4. Enhance logging with structured error data
+5. Add circuit breaker pattern
+6. Implement recovery mechanisms
+
+# ... rest of existing content ...
