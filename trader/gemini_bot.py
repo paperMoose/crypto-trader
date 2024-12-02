@@ -95,19 +95,53 @@ async def main():
             }
         },
         {
-            "name": "DOGE Range Strategy 12/1/24",
+            "name": "DOGE BB Pullback Strategy 12/1/24",
             "type": StrategyType.RANGE,
             "symbol": Symbol.DOGEUSD,
             "state": StrategyState.ACTIVE,
             "check_interval": 5,
             "config": {
-                "support_price": "0.44869",    # Previous resistance becomes support
-                "resistance_price": "0.46200", # Next resistance from order book
-                "amount": "5000",             # Position size
-                "stop_loss_price": "0.44500"  # Below new support
-                # Risk: $18.45 ((0.44869 - 0.44500) * 5000)
-                # Reward: $66.55 ((0.46200 - 0.44869) * 5000)
-                # Reward-to-Risk Ratio: 3.6:1
+                "support_price": "0.45009",    # Middle BB entry
+                "resistance_price": "0.46000", # Resistance target
+                "amount": "2500",             # Position size
+                "stop_loss_price": "0.44500"  # Below middle BB
+                # Risk: $25.45 ((0.45009 - 0.44500) * 2500)
+                # Reward: $49.55 ((0.46000 - 0.45009) * 2500)
+                # Reward-to-Risk Ratio: 1.95:1
+            }
+        },
+        {
+            "name": "DOGE BB Breakout Strategy 12/1/24",
+            "type": StrategyType.BREAKOUT,
+            "symbol": Symbol.DOGEUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "breakout_price": "0.46100",   # Breakout confirmation
+                "stop_loss_price": "0.45500",  # Below middle BB
+                "amount": "1000",              # Position size
+                "take_profit_1": "0.46800",    # First target
+                "take_profit_2": "0.47000"     # Extended target
+                # Risk: $30 ((0.46100 - 0.45500) * 5000)
+                # Reward T1: $35 ((0.46800 - 0.46100) * 5000)
+                # Reward T2: $45 ((0.47000 - 0.46100) * 5000)
+                # Average Reward-to-Risk: 1.33:1
+            }
+        },
+        {
+            "name": "DOGE BB Reversal Strategy 12/1/24",
+            "type": StrategyType.RANGE,
+            "symbol": Symbol.DOGEUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 5,
+            "config": {
+                "support_price": "0.39000",    # Just above lower BB
+                "resistance_price": "0.42000", # Middle BB target
+                "amount": "2500",             # Position size
+                "stop_loss_price": "0.38000"  # Below lower BB
+                # Risk: $50 ((0.39000 - 0.38000) * 5000)
+                # Reward: $150 ((0.42000 - 0.39000) * 5000)
+                # Reward-to-Risk Ratio: 3:1
             }
         },
         {
