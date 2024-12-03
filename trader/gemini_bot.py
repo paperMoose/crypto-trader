@@ -186,6 +186,22 @@ async def main():
                     "stop_loss_price": "2.55",
             }
         },
+        {
+            "name": "DOGE BB Range Strategy 12/3/24",
+            "type": StrategyType.RANGE,
+            "symbol": Symbol.DOGEUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "support_price": "0.40750",    # Near lower BB support
+                "resistance_price": "0.419",  # Previous support becomes resistance
+                "amount": "2500",              # Position size
+                "stop_loss_price": "0.40250"   # Just below lower BB
+                # Risk: $12.50 ((0.40750 - 0.40250) * 2500)
+                # Reward: $28.75 ((0.419 - 0.40750) * 2500)
+                # Reward-to-Risk ratio: 2.3:1
+            }
+        },
     ]
 
     try:
