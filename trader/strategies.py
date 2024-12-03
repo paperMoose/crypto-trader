@@ -185,7 +185,6 @@ class BreakoutStrategy(BaseStrategy):
                         strategy=strategy,
                         prices=[config['take_profit_1'], config['take_profit_2']],
                         amount=config['amount'],
-                        buy_price=buy_order.price  # Pass buy price for profit tracking
                     )
                     
         except Exception as e:

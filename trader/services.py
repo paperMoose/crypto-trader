@@ -10,7 +10,7 @@ from trader.database import (
     get_active_strategies, 
     get_strategy_by_name
 )
-from trader.gemini.schemas import GeminiAPIError
+from trader.gemini.schemas import GeminiAPIError, OrderStatusResponse
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,8 @@ class OrderService:
                 side=side.value,
                 symbol=strategy.symbol,
                 order_type=order_type,
-                strategy_id=strategy.id
+                strategy_id=strategy.id,
+                fee_usd=response.get_total_fees()
             )
             
             self.session.add(order)
@@ -76,9 +77,15 @@ class OrderService:
         for order in strategy.orders:
             try:
                 response = await self.client.check_order_status(order.order_id)
-                if hasattr(response, 'status') and response.status is not None:
+                
+                if response.status:
                     old_status = order.status
-                    order.status = OrderState(response.status.value if hasattr(response.status, 'value') else response.status)
+                    order.status = OrderState(response.status.value)
+                    
+                    # Update fee if order is filled
+                    if order.status == OrderState.FILLED:
+                        order.fee_usd = response.get_total_fees()
+                        
                     self.logger.info(f"Order {order.order_id} updated - Status: {old_status} -> {order.status}")
             except Exception as e:
                 self.logger.error(f"Error updating order {order.order_id}: {str(e)}")

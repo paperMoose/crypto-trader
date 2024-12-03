@@ -59,6 +59,7 @@ class Order(SQLModel, table=True):
     symbol: str
     order_type: OrderType
     stop_price: Optional[str] = None
+    fee_usd: Optional[str] = Field(default="0.0")
     created_at: datetime = Field(default=datetime.utcnow())
     updated_at: datetime = Field(default=datetime.utcnow())
     parent_order_id: Optional[str] = Field(default=None, foreign_key="order.order_id")
