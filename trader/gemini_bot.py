@@ -187,6 +187,23 @@ async def main():
             }
         },
         {
+            "name": "XRP Momentum Continuation pt 2 12/3/24",
+            "type": StrategyType.RANGE,
+            "symbol": Symbol.XRPUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "support_price": "2.56",        # Entry level below current price ($2.61)
+                "resistance_price": "2.68",      # Clear resistance target
+                "amount": "1250",               # Good size for meaningful profit
+                "stop_loss_price": "2.40"       # Wide stop allowing for volatility
+                # Risk: $200.00 ((2.56 - 2.40) * 1250)
+                # Reward: $150.00 ((2.68 - 2.56) * 1250)
+                # Long-term bull thesis makes risk acceptable
+                # Wide stop allows for normal volatility while waiting for target
+            }
+        }
+        {
             "name": "DOGE BB Range Strategy 12/3/24",
             "type": StrategyType.RANGE,
             "symbol": Symbol.DOGEUSD,
