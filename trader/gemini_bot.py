@@ -183,7 +183,7 @@ async def main():
                     "support_price": "2.65",
                     "resistance_price": "2.74",
                     "amount": "750",
-                    "stop_loss_price": "2.55",
+                    "stop_loss_price": "2.61",
             }
         },
         {
