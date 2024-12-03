@@ -9,6 +9,7 @@ from trader.database import save_strategy, save_order, update_order
 from datetime import datetime, timedelta
 from asyncio import Future
 from sqlalchemy import and_
+from trader.tests.utils import create_mock_order_response
 
 
 # Test Data Fixtures
@@ -660,26 +661,6 @@ async def test_breakout_strategy_order_flow(session, mock_gemini_client, breakou
         breakout_strategy_data['config']['take_profit_2']
     }
     assert tp_prices == expected_prices
-
-# Helper function to create mock order responses
-def create_mock_order_response(order_id, status="accepted", **kwargs):
-    """Create a mock order response with all required fields"""
-    # Convert status string to OrderState if it isn't already
-    if isinstance(status, str):
-        status = OrderState(status)
-    
-    return type('Response', (), {
-        'order_id': order_id,
-        'status': status,
-        'original_amount': kwargs.get('amount', '1000'),
-        'price': kwargs.get('price', '0.35'),
-        'side': kwargs.get('side', 'buy'),
-        'symbol': kwargs.get('symbol', 'dogeusd'),
-        'stop_price': kwargs.get('stop_price', None),
-        'get_total_fees': lambda: kwargs.get('fees', '0.00'),
-        'is_live': kwargs.get('is_live', True),
-        'is_cancelled': kwargs.get('is_cancelled', False)
-    })
 
 class TestTakeProfitStrategy:
     def test_validate_config_valid(self, take_profit_strategy, take_profit_config):
