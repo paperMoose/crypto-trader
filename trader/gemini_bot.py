@@ -156,6 +156,24 @@ async def main():
         #     }
         # } failed
         {
+            "name": "SOL Bullish Breakout Strategy 12/3/24 v2",
+            "type": StrategyType.BREAKOUT,
+            "symbol": Symbol.SOLUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "breakout_price": "236.50",    # Above current consolidation
+                "stop_loss": "232.50",         # Below recent support
+                "amount": "5",                 # Position size
+                "take_profit_1": "240.50",     # First target at recent high
+                "take_profit_2": "242.50"      # Extended target at next resistance
+                # Risk: $10.00 ((236.50 - 234.50) * 5)
+                # Reward T1: $10.00 ((238.50 - 236.50) * 5)
+                # Reward T2: $20.00 ((240.50 - 236.50) * 5)
+                # Average Reward-to-Risk: 1.5:1
+            }
+        },
+        {
             "name": "XRP Momentum Continuation 12/3/24",
             "type": StrategyType.RANGE,
             "symbol": Symbol.XRPUSD,
