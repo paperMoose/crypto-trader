@@ -196,3 +196,13 @@ Example for XRP BB Strategy:
 6. Implement recovery mechanisms
 
 # ... rest of existing content ...
+
+Dec 01 21:58:48 gemini-trading-bot app/worker.1 INFO:StrategyManager:Creating strategy: DOGE BB Reversal Strategy take 2 12/1/24
+Dec 01 21:58:48 gemini-trading-bot app/worker.1 INFO:StrategyService:Creating new strategy: DOGE BB Reversal Strategy take 2 12/1/24
+Dec 01 21:58:48 gemini-trading-bot app/worker.1 INFO:__main__:Strategy DOGE BB Reversal Strategy take 2 12/1/24 updated
+Dec 01 21:58:48 gemini-trading-bot app/worker.1 INFO:__main__:Processing strategy: XRP Momentum Continuation 2 12/2/24
+Dec 01 21:58:48 gemini-trading-bot app/worker.1 INFO:StrategyManager:Creating strategy: XRP Momentum Continuation 2 12/2/24
+Dec 01 21:58:48 gemini-trading-bot app/worker.1 ERROR:StrategyManager:Error creating strategy: Invalid configuration for strategy: XRP Momentum Continuation 2 12/2/24
+Dec 01 21:58:48 gemini-trading-bot app/worker.1 ERROR:__main__:Error processing strategy XRP Momentum Continuation 2 12/2/24: Invalid configuration for strategy: XRP Momentum Continuation 2 12/2/24
+
+Figure out why this is happening.
