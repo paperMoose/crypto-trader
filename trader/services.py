@@ -11,8 +11,6 @@ from trader.database import (
     get_strategy_by_name
 )
 from trader.gemini.schemas import GeminiAPIError
-from decimal import Decimal
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -197,10 +195,9 @@ class StrategyService:
         current_price: str,
         stop_price: str,
         amount: str,
-        active_orders: List[Order],
-        buy_price: Optional[str] = None
+        active_orders: List[Order]
     ) -> Optional[Order]:
-        """Execute stop loss order and update profits"""
+        """Execute stop loss order"""
         self.logger.info(f"Price ${current_price} hit stop loss at ${stop_price}, executing market sell")
         
         # Cancel existing orders
@@ -217,10 +214,6 @@ class StrategyService:
         
         # Mark strategy as completed
         self.complete_strategy(strategy)
-        
-        # Update profits if buy price is provided
-        if buy_price and order:
-            self.update_strategy_profits(strategy, buy_price, stop_price, amount)
             
         return order
 
@@ -228,10 +221,9 @@ class StrategyService:
         self,
         strategy: TradingStrategy,
         prices: List[str],
-        amount: str,
-        buy_price: Optional[str] = None
+        amount: str
     ) -> List[Order]:
-        """Place take profit orders and track potential profit"""
+        """Place take profit orders"""
         orders = []
         for price in prices:
             order = await self.order_service.place_order(
@@ -242,15 +234,6 @@ class StrategyService:
                 order_type=OrderType.LIMIT_SELL
             )
             orders.append(order)
-        
-        # Log potential profits if buy price is provided
-        if buy_price:
-            for price in prices:
-                potential_profit = (Decimal(price) - Decimal(buy_price)) * Decimal(amount) / len(prices)
-                self.logger.info(
-                    f"Potential profit for take profit order at ${price}: "
-                    f"${potential_profit:.2f} (Before taxes: ${potential_profit * Decimal('0.5'):.2f})"
-                )
         
         return orders
 
@@ -313,110 +296,3 @@ class StrategyService:
         
         await self.cancel_and_deactivate_strategy(strategy)
         return strategy
-
-    def update_strategy_profits(self, strategy: TradingStrategy, buy_price: str, sell_price: str, amount: str) -> None:
-        """
-        Update strategy profits after a successful trade
-        Args:
-            strategy: The trading strategy
-            buy_price: The price at which the asset was bought
-            sell_price: The price at which the asset was sold
-            amount: The amount of the asset traded
-        """
-        try:
-            # Convert strings to Decimal for precise calculation
-            buy_dec = Decimal(buy_price)
-            sell_dec = Decimal(sell_price)
-            amount_dec = Decimal(amount)
-            
-            # Calculate profit
-            trade_profit = (sell_dec - buy_dec) * amount_dec
-            
-            # Update total profit
-            current_total = Decimal(strategy.total_profit or "0.0")
-            new_total = current_total + trade_profit
-            strategy.total_profit = str(new_total)
-            
-            # Update realized profit
-            current_realized = Decimal(strategy.realized_profit or "0.0")
-            new_realized = current_realized + trade_profit
-            strategy.realized_profit = str(new_realized)
-            
-            # Calculate and update tax reserve (50% of profit)
-            if trade_profit > 0:
-                tax_reserve = trade_profit * Decimal("0.5")
-                current_tax_reserve = Decimal(strategy.tax_reserve or "0.0")
-                strategy.tax_reserve = str(current_tax_reserve + tax_reserve)
-                
-                # Calculate available profit (after tax reserve)
-                current_available = Decimal(strategy.available_profit or "0.0")
-                strategy.available_profit = str(current_available + (trade_profit - tax_reserve))
-            
-            self.session.commit()
-            
-            # Log the profit update
-            self.logger.info(
-                f"Updated profits for strategy {strategy.name}:\n"
-                f"Trade Profit: ${trade_profit:.2f}\n"
-                f"Total Profit: ${new_total:.2f}\n"
-                f"Tax Reserve: ${strategy.tax_reserve}\n"
-                f"Available: ${strategy.available_profit}"
-            )
-            
-        except Exception as e:
-            self.logger.error(f"Error updating profits: {str(e)}")
-            self.session.rollback()
-            raise
-
-    def get_total_profits_summary(self) -> Dict[str, str]:
-        """
-        Get a summary of total profits across all strategies
-        Returns:
-            Dict containing total profits, tax reserve, and available profits
-        """
-        try:
-            # Get all strategies using explicit select
-            statement = select(TradingStrategy)
-            result = self.session.exec(statement)
-            strategies = result.all()
-            
-            # Initialize totals using Decimal for precise calculation
-            total_profit = Decimal("0.0")
-            total_tax_reserve = Decimal("0.0")
-            total_available = Decimal("0.0")
-            total_realized = Decimal("0.0")
-            
-            # Sum up profits from all strategies
-            for strategy in strategies:
-                total_profit += Decimal(strategy.total_profit)
-                total_tax_reserve += Decimal(strategy.tax_reserve)
-                total_available += Decimal(strategy.available_profit)
-                total_realized += Decimal(strategy.realized_profit)
-            
-            return {
-                "total_profit": f"{total_profit:.2f}",
-                "total_realized": f"{total_realized:.2f}",
-                "tax_reserve": f"{total_tax_reserve:.2f}",
-                "available_profit": f"{total_available:.2f}"
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error getting profit summary: {str(e)}")
-            raise
-
-    def get_profits_by_strategy(self):
-        """Get detailed profit breakdown by strategy"""
-        statement = select(TradingStrategy)
-        result = self.session.exec(statement)
-        strategies = result.all()
-        
-        return [{
-            'strategy_id': strategy.id,
-            'strategy_name': strategy.name,
-            'total_profit': strategy.total_profit,
-            'realized_profit': strategy.realized_profit,
-            'tax_reserve': strategy.tax_reserve,
-            'available_profit': strategy.available_profit,
-            'symbol': strategy.symbol,
-            'type': strategy.type
-        } for strategy in strategies]
