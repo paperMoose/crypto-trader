@@ -174,19 +174,6 @@ async def main():
             }
         },
         {
-            "name": "XRP Momentum Continuation 12/3/24",
-            "type": StrategyType.RANGE,
-            "symbol": Symbol.XRPUSD,
-            "state": StrategyState.ACTIVE,
-            "check_interval": 3,
-                "config": {
-                    "support_price": "2.65",
-                    "resistance_price": "2.74",
-                    "amount": "750",
-                    "stop_loss_price": "2.61",
-            }
-        },
-        {
             "name": "XRP Momentum Continuation pt 2 12/3/24",
             "type": StrategyType.RANGE,
             "symbol": Symbol.XRPUSD,
@@ -202,7 +189,7 @@ async def main():
                 # Long-term bull thesis makes risk acceptable
                 # Wide stop allows for normal volatility while waiting for target
             }
-        }
+        },
         {
             "name": "DOGE BB Range Strategy 12/3/24",
             "type": StrategyType.RANGE,
