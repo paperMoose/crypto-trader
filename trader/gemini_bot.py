@@ -128,22 +128,6 @@ async def main():
         #         # Average Reward-to-Risk: 1.33:1
         #     }
         # }, failed 
-        {
-            "name": "DOGE BB Reversal Strategy take 2 12/1/24",
-            "type": StrategyType.RANGE,
-            "symbol": Symbol.DOGEUSD,
-            "state": StrategyState.ACTIVE,
-            "check_interval": 5,
-            "config": {
-                "support_price": "0.39000",    # Just above lower BB
-                "resistance_price": "0.42000", # Middle BB target
-                "amount": "2500",             # Position size
-                "stop_loss_price": "0.37000"  # Below lower BB
-                # Risk: $50 ((0.39000 - 0.38000) * 5000)
-                # Reward: $150 ((0.42000 - 0.39000) * 5000)
-                # Reward-to-Risk Ratio: 3:1
-            }
-        },
         # {
         #     "name": "XRP BB Bounce Strategy 12/1/24",
         #     "type": StrategyType.RANGE,
@@ -172,39 +156,18 @@ async def main():
         #     }
         # } failed
         {
-            "name": "XRP Momentum Continuation 2 12/2/24",
-            "type": StrategyType.BREAKOUT,
+            "name": "XRP Momentum Continuation 12/3/24",
+            "type": StrategyType.RANGE,
             "symbol": Symbol.XRPUSD,
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
-            "config": {
-                "breakout_price": "2.4600",    # Confirmation above current resistance
-                "stop_loss_price": "2.4200",   # Below recent support
-                "amount": "250",               # Conservative position size
-                "take_profit_1": "2.5000",     # First target at psychological level
-                "take_profit_2": "2.5700"      # Second target at upper BB
-                # Risk: 8 ((2.4600 - 2.4200) * 100)
-                # Reward T1: $8 ((2.5000 - 2.4600) * 100)
-                # Reward T2: $22 ((2.5700 - 2.4600) * 100)
-                # Average Reward-to-Risk: 1.875:1
+                "config": {
+                    "support_price": "2.65",
+                    "resistance_price": "2.74",
+                    "amount": "750",
+                    "stop_loss_price": "2.60",
             }
         },
-        {
-            "name": "SOL Range Strategy take 3 12/2/24",
-            "type": StrategyType.RANGE,
-            "symbol": Symbol.SOLUSD,
-            "state": StrategyState.ACTIVE,
-            "check_interval": 3,
-            "config": {
-                "support_price": "228.00",     # Strong order book support
-                "resistance_price": "229.50",   # Near-term resistance
-                "amount": "5",                  # Increased position size for better profit potential
-                "stop_loss_price": "227.50"     # Below BB lower band
-                # Risk: $2.50 ((228.00 - 227.50) * 5)
-                # Reward: $7.50 ((229.50 - 228.00) * 5)
-                # 3:1 reward-to-risk ratio with higher position size
-            }
-        }
     ]
 
     try:
