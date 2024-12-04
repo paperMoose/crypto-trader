@@ -206,3 +206,21 @@ Dec 01 21:58:48 gemini-trading-bot app/worker.1 ERROR:StrategyManager:Error crea
 Dec 01 21:58:48 gemini-trading-bot app/worker.1 ERROR:__main__:Error processing strategy XRP Momentum Continuation 2 12/2/24: Invalid configuration for strategy: XRP Momentum Continuation 2 12/2/24
 
 Figure out why this is happening.
+
+3 15:50:33 gemini-trading-bot app/worker.1 ERROR:StrategyService:Error in strategy XRP Momentum Continuation pt 2 12/3/24: 'last'
+Dec 03 15:50:33 gemini-trading-bot app/worker.1 Traceback (most recent call last):
+Dec 03 15:50:33 gemini-trading-bot app/worker.1   File "/app/trader/strategies.py", line 49, in execute
+Dec 03 15:50:33 gemini-trading-bot app/worker.1     current_price = await service.get_current_price(strategy.symbol)
+Dec 03 15:50:33 gemini-trading-bot app/worker.1                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Dec 03 15:50:33 gemini-trading-bot app/worker.1   File "/app/trader/services.py", line 100, in get_current_price
+Dec 03 15:50:33 gemini-trading-bot app/worker.1     return await self.client.get_price(Symbol(symbol))
+Dec 03 15:50:33 gemini-trading-bot app/worker.1            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Dec 03 15:50:33 gemini-trading-bot app/worker.1   File "/app/trader/gemini/decorators.py", line 63, in wrapper
+Dec 03 15:50:33 gemini-trading-bot app/worker.1     response = await func(*args, **kwargs)
+Dec 03 15:50:33 gemini-trading-bot app/worker.1                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Dec 03 15:50:33 gemini-trading-bot app/worker.1   File "/app/trader/gemini/client.py", line 145, in get_price
+Dec 03 15:50:33 gemini-trading-bot app/worker.1     return data['last']  # Returns last traded price
+Dec 03 15:50:33 gemini-trading-bot app/worker.1            ~~~~^^^^^^^^
+Dec 03 15:50:33 gemini-trading-bot app/worker.1 KeyError: 'last'
+
+Figure out why this is happening.
