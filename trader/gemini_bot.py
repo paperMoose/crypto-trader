@@ -206,6 +206,23 @@ async def main():
                 # Reward-to-Risk ratio: 2.3:1
             }
         },
+        {
+            "name": "XRP BB Breakout Strategy 12/4/24",
+            "type": StrategyType.RANGE,
+            "symbol": Symbol.XRPUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "support_price": "2.42",        # Current price as entry
+                "resistance_price": "2.50",      # Near upper BB target
+                "amount": "2000",               # Consistent position size
+                "stop_loss_price": "2.30",      # Below recent support
+                # Risk: $220.00 ((2.41 - 2.30) * 2000)
+                # Reward: $180.00 ((2.50 - 2.41) * 2000)
+                # Reward-to-Risk ratio: 1.5:1
+                # RSI showing potential reversal from oversold
+            }
+        },
     ]
 
     try:
