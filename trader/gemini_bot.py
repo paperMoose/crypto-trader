@@ -213,7 +213,7 @@ async def main():
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "support_price": "2.42",        # Current price as entry
+                "support_price": "2.45",        # Current price as entry
                 "resistance_price": "2.50",      # Near upper BB target
                 "amount": "2000",               # Consistent position size
                 "stop_loss_price": "2.30",      # Below recent support
