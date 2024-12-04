@@ -207,7 +207,7 @@ async def main():
             }
         },
         {
-            "name": "XRP BB Breakout Strategy 12/4/24",
+            "name": "XRP BB Breakout Strategy 2 12/4/24",
             "type": StrategyType.RANGE,
             "symbol": Symbol.XRPUSD,
             "state": StrategyState.ACTIVE,
