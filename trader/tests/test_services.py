@@ -5,6 +5,7 @@ from trader.models import Order, OrderState, OrderType, StrategyType, StrategySt
 from trader.gemini.enums import OrderSide, Symbol
 from trader.gemini.schemas import GeminiAPIError
 from datetime import datetime, timedelta
+from trader.tests.utils import create_mock_order_response
 
 # Test Data Fixtures
 @pytest.fixture
@@ -48,7 +49,7 @@ class TestOrderService:
         """Test successful order placement"""
         service = OrderService(mock_gemini_client, session)
         
-        mock_gemini_client.place_order.return_value = Mock(order_id="test_123")
+        mock_gemini_client.place_order.return_value = create_mock_order_response("test_123")
         
         order = await service.place_order(
             strategy=mock_strategy,
@@ -92,16 +93,13 @@ class TestOrderService:
         """Test order status updates"""
         service = OrderService(mock_gemini_client, session)
         
-        # Add order to session and commit
         session.add(mock_order)
         session.commit()
-        
-        # Add order to strategy's orders
         mock_strategy.orders = [mock_order]
         
-        mock_gemini_client.check_order_status.return_value = Mock(
-            status=OrderState.FILLED,
-            order_id=mock_order.order_id
+        mock_gemini_client.check_order_status.return_value = create_mock_order_response(
+            mock_order.order_id,
+            status=OrderState.FILLED
         )
         
         await service.update_order_statuses(mock_strategy)
@@ -144,9 +142,29 @@ class TestStrategyService:
         """Test stop loss execution"""
         service = StrategyService(mock_gemini_client, session)
         
-        mock_gemini_client.place_order.return_value = Mock(order_id="stop_loss_123")
+        mock_gemini_client.place_order.return_value = create_mock_order_response(
+            "stop_loss_123",
+            side=OrderSide.SELL.value,
+            price="0.28"
+        )
         
-        active_orders = [Mock(order_id="existing_123")]
+        active_orders = [
+            Order(
+                order_id="existing_123",
+                status=OrderState.LIVE,
+                amount="1000",
+                price="0.35",
+                side=OrderSide.BUY.value,
+                symbol=mock_strategy.symbol,
+                order_type=OrderType.LIMIT_BUY,
+                strategy_id=mock_strategy.id
+            )
+        ]
+        
+        for order in active_orders:
+            session.add(order)
+        session.commit()
+        session.refresh(mock_strategy)
         
         order = await service.execute_stop_loss(
             strategy=mock_strategy,
@@ -165,9 +183,18 @@ class TestStrategyService:
         """Test placing take profit orders"""
         service = StrategyService(mock_gemini_client, session)
         
+        # Use create_mock_order_response for each take profit order
         mock_gemini_client.place_order.side_effect = [
-            Mock(order_id=f"tp_{i}") for i in range(2)
+            create_mock_order_response(
+                f"tp_{i}",
+                side=OrderSide.SELL.value,
+                price=price,
+                amount=str(float("1000")/2)  # Half the amount for each TP order
+            )
+            for i, price in enumerate(["0.37", "0.40"])
         ]
+        
+        session.refresh(mock_strategy)  # Ensure strategy is attached to session
         
         orders = await service.place_take_profit_orders(
             strategy=mock_strategy,
@@ -178,6 +205,11 @@ class TestStrategyService:
         assert len(orders) == 2
         assert all(o.side == OrderSide.SELL.value for o in orders)
         assert mock_gemini_client.place_order.call_count == 2
+        
+        # Verify order details
+        assert orders[0].price == "0.37"
+        assert orders[1].price == "0.40"
+        assert all(float(o.amount) == 500.0 for o in orders)  # Half of 1000 for each order
 
     @pytest.mark.asyncio
     async def test_should_execute_strategy(self, session, mock_gemini_client, mock_strategy):
@@ -222,75 +254,3 @@ class TestStrategyService:
         
         assert mock_strategy.state == StrategyState.FAILED
         assert mock_strategy.is_active is False
-
-    @pytest.mark.asyncio
-    async def test_get_total_profits_summary(self, session, mock_gemini_client):
-        """Test getting total profits summary across strategies"""
-        service = StrategyService(mock_gemini_client, session)
-        
-        # Create test strategies with known profits
-        strategies = []
-        for i in range(1, 4):  # Create 3 strategies
-            strategy = TradingStrategy(
-                name=f"Test Strategy {i}",
-                type=StrategyType.RANGE,
-                symbol="btcusd",
-                total_profit=str(100.0 * i),
-                realized_profit=str(90.0 * i),
-                tax_reserve=str(50.0 * i),
-                available_profit=str(50.0 * i),
-                state=StrategyState.ACTIVE,
-                is_active=True,
-                check_interval=60,
-                config={},
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-                last_checked_at=datetime.utcnow()
-            )
-            strategies.append(strategy)
-            session.add(strategy)
-        session.commit()
-        
-        # Get profits summary
-        summary = service.get_total_profits_summary()
-        
-        # Verify totals
-        assert float(summary['total_profit']) == 600.0  # 100 + 200 + 300
-        assert float(summary['total_realized']) == 540.0  # 90 + 180 + 270
-        assert float(summary['tax_reserve']) == 300.0  # 50 + 100 + 150
-        assert float(summary['available_profit']) == 300.0  # 50 + 100 + 150
-
-    @pytest.mark.asyncio
-    async def test_get_profits_by_strategy(self, session, mock_gemini_client):
-        """Test getting detailed profit breakdown by strategy"""
-        service = StrategyService(mock_gemini_client, session)
-        
-        # Create test strategy with known profits
-        strategy = TradingStrategy(
-            name="Test Strategy",
-            type=StrategyType.RANGE,
-            symbol="btcusd",
-            total_profit="100.0",
-            realized_profit="90.0",
-            tax_reserve="50.0",
-            available_profit="50.0",
-            state=StrategyState.ACTIVE,
-            is_active=True
-        )
-        session.add(strategy)
-        session.commit()
-        
-        # Get strategy profits
-        results = service.get_profits_by_strategy()
-        
-        # Verify results
-        assert len(results) == 1
-        result = results[0]
-        assert result['strategy_id'] == strategy.id
-        assert result['strategy_name'] == strategy.name
-        assert float(result['total_profit']) == 100.0
-        assert float(result['realized_profit']) == 90.0
-        assert float(result['tax_reserve']) == 50.0
-        assert float(result['available_profit']) == 50.0
-        assert result['symbol'] == 'btcusd'
-        assert result['type'] == StrategyType.RANGE 

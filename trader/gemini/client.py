@@ -14,6 +14,7 @@ from .schemas import (
 )
 from .enums import OrderSide, OrderType, Symbol, OrderOption
 from .decorators import with_retry
+from typing import Optional, List
 
 class GeminiClient:
     def __init__(self):
@@ -61,11 +62,12 @@ class GeminiClient:
         price: str,
         side: OrderSide,
         order_type: OrderType,
-        stop_price: str = None,
+        stop_price: Optional[str] = None,
         client_order_id: str = None,
         options: list[OrderOption] = None,
         account: str = None
-    ) -> OrderResponse:
+    ) -> OrderStatusResponse:
+        """Place an order and return response with trade info"""
         endpoint = "/v1/order/new"
         payload = {
             "request": endpoint,
@@ -87,10 +89,11 @@ class GeminiClient:
             payload["account"] = account
 
         response = await self._make_request(endpoint, payload)
-        return parse_response(response, OrderResponse)
+        return parse_response(response, OrderStatusResponse)
 
     @with_retry(max_retries=3, base_delay=1.0)
     async def check_order_status(self, order_id: str) -> OrderStatusResponse:
+        """Get status of an order including trade info"""
         endpoint = "/v1/order/status"
         payload = {
             "request": endpoint,
@@ -102,6 +105,7 @@ class GeminiClient:
 
     @with_retry(max_retries=3, base_delay=1.0)
     async def get_active_orders(self) -> ActiveOrdersResponse:
+        """Get all active orders"""
         endpoint = "/v1/orders"
         payload = {
             "request": endpoint,
@@ -112,6 +116,7 @@ class GeminiClient:
 
     @with_retry(max_retries=3, base_delay=1.0)
     async def cancel_order(self, order_id: str) -> CancelOrderResponse:
+        """Cancel an order"""
         endpoint = "/v1/order/cancel"
         payload = {
             "request": endpoint,

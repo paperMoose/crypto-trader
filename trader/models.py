@@ -37,19 +37,13 @@ class TradingStrategy(SQLModel, table=True):
     name: str = Field(index=True)
     type: StrategyType
     symbol: str
-    # For JSON fields, provide an empty dict directly instead of using default_factory
     config: Dict[str, Any] = Field(default={}, sa_type=JSON)
     state: StrategyState = Field(default=StrategyState.INIT)
     is_active: bool = Field(default=True)
-    # For datetime fields, use default instead of default_factory
     created_at: datetime = Field(default=datetime.utcnow())
     updated_at: datetime = Field(default=datetime.utcnow())
     last_checked_at: datetime = Field(default=datetime.utcnow())
     check_interval: int = Field(default=1)
-    total_profit: str = Field(default="0.0")
-    realized_profit: str = Field(default="0.0")
-    tax_reserve: str = Field(default="0.0")
-    available_profit: str = Field(default="0.0")
     
     orders: List["Order"] = Relationship(back_populates="strategy")
 
@@ -65,7 +59,7 @@ class Order(SQLModel, table=True):
     symbol: str
     order_type: OrderType
     stop_price: Optional[str] = None
-    # For datetime fields, use default instead of default_factory
+    fee_usd: Optional[str] = Field(default="0.0")
     created_at: datetime = Field(default=datetime.utcnow())
     updated_at: datetime = Field(default=datetime.utcnow())
     parent_order_id: Optional[str] = Field(default=None, foreign_key="order.order_id")

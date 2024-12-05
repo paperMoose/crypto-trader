@@ -57,8 +57,6 @@ class OrderResponse(BaseModel):
             # No executions, not live, not cancelled - must be accepted
             self.status = OrderStatus.ACCEPTED
 
-class OrderStatusResponse(OrderResponse):
-    trades: Optional[List[dict]] = None
 
 class ActiveOrdersResponse(BaseModel):
     orders: List[OrderResponse]
@@ -117,3 +115,34 @@ class OrderHistoryResponse(BaseModel):
         # Convert each order dict to an OrderResponse object
         orders = [OrderResponse(**order) for order in response]
         return cls(orders=orders) 
+
+class Trade(BaseModel):
+    aggressor: bool
+    amount: str
+    exchange: str
+    fee_amount: str
+    fee_currency: str
+    order_id: str
+    price: str
+    tid: int
+    timestamp: int
+    timestampms: int
+    type: str
+
+class OrderResponseWithTrades(OrderResponse):
+    trades: Optional[List[Trade]] = None
+    
+    def get_total_fees(self) -> str:
+        """Calculate total fees from all trades"""
+        if not self.trades:
+            return "0.0"
+        return str(sum(float(trade.fee_amount) for trade in self.trades)) 
+    
+class OrderStatusResponse(OrderResponse):
+    trades: Optional[List[Trade]] = None
+    
+    def get_total_fees(self) -> str:
+        """Calculate total fees from all trades"""
+        if not self.trades:
+            return "0.0"
+        return str(sum(float(trade.fee_amount) for trade in self.trades))

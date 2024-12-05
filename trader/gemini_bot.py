@@ -179,47 +179,11 @@ async def main():
             "symbol": Symbol.XRPUSD,
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
-            "config": {
-                "support_price": "2.56",        # Entry level below current price ($2.61)
-                "resistance_price": "2.68",      # Clear resistance target
-                "amount": "1250",               # Good size for meaningful profit
-                "stop_loss_price": "2.40"       # Wide stop allowing for volatility
-                # Risk: $200.00 ((2.56 - 2.40) * 1250)
-                # Reward: $150.00 ((2.68 - 2.56) * 1250)
-                # Long-term bull thesis makes risk acceptable
-                # Wide stop allows for normal volatility while waiting for target
-            }
-        },
-        {
-            "name": "DOGE BB Range Strategy 12/3/24",
-            "type": StrategyType.RANGE,
-            "symbol": Symbol.DOGEUSD,
-            "state": StrategyState.ACTIVE,
-            "check_interval": 3,
-            "config": {
-                "support_price": "0.40750",    # Near lower BB support
-                "resistance_price": "0.419",  # Previous support becomes resistance
-                "amount": "2500",              # Position size
-                "stop_loss_price": "0.40250"   # Just below lower BB
-                # Risk: $12.50 ((0.40750 - 0.40250) * 2500)
-                # Reward: $28.75 ((0.419 - 0.40750) * 2500)
-                # Reward-to-Risk ratio: 2.3:1
-            }
-        },
-        {
-            "name": "XRP BB Take Profit Strategy take 3 12/4/24",
-            "type": StrategyType.TAKE_PROFIT,
-            "symbol": Symbol.XRPUSD,
-            "state": StrategyState.ACTIVE,
-            "check_interval": 3,
-            "config": {
-                "current_position": "2000",     # Current position size
-                "entry_price": "2.45",          # Entry price
-                "take_profit_price": "2.50",    # Take profit target
-                "stop_loss_price": "2.30"       # Stop loss level
-                # Risk: $300.00 ((2.45 - 2.30) * 2000)
-                # Reward: $100.00 ((2.50 - 2.45) * 2000)
-                # Reward-to-Risk ratio: 0.33:1
+                "config": {
+                    "support_price": "2.65",
+                    "resistance_price": "2.74",
+                    "amount": "750",
+                    "stop_loss_price": "2.60",
             }
         },
     ]
