@@ -207,20 +207,19 @@ async def main():
             }
         },
         {
-            "name": "XRP BB Breakout Strategy 2 12/4/24",
-            "type": StrategyType.RANGE,
+            "name": "XRP BB Take Profit Strategy take 3 12/4/24",
+            "type": StrategyType.TAKE_PROFIT,
             "symbol": Symbol.XRPUSD,
             "state": StrategyState.ACTIVE,
             "check_interval": 3,
             "config": {
-                "support_price": "2.45",        # Current price as entry
-                "resistance_price": "2.50",      # Near upper BB target
-                "amount": "2000",               # Consistent position size
-                "stop_loss_price": "2.30",      # Below recent support
-                # Risk: $220.00 ((2.41 - 2.30) * 2000)
-                # Reward: $180.00 ((2.50 - 2.41) * 2000)
-                # Reward-to-Risk ratio: 1.5:1
-                # RSI showing potential reversal from oversold
+                "current_position": "2000",     # Current position size
+                "entry_price": "2.45",          # Entry price
+                "take_profit_price": "2.50",    # Take profit target
+                "stop_loss_price": "2.30"       # Stop loss level
+                # Risk: $300.00 ((2.45 - 2.30) * 2000)
+                # Reward: $100.00 ((2.50 - 2.45) * 2000)
+                # Reward-to-Risk ratio: 0.33:1
             }
         },
     ]
