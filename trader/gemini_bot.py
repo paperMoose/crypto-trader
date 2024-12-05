@@ -62,99 +62,24 @@ async def main():
 
     # Define strategies
     strategies = [
-        # {
-        #     "name": "SOL Range Strategy take 2 12/1/24",
-        #     "type": StrategyType.RANGE,
-        #     "symbol": Symbol.SOLUSD,
-        #     "state": StrategyState.ACTIVE,
-        #     "check_interval": 5,
-        #     "config": {
-        #         "support_price": "233.50",    
-        #         "resistance_price": "239.50",  
-        #         "amount": "5",                 
-        #         "stop_loss_price": "231.50",   
-        #         # Risk: $10.00 ((233.50 - 231.50) * 5)
-        #         # Reward: $30.00 ((239.50 - 233.50) * 5)
-        #         # 3:1 reward-to-risk ratio
-        #     }
-        # },
-        # {
-        #     "name": "SOL Take Profit Strategy 12/1/24",
-        #     "type": StrategyType.TAKE_PROFIT,
-        #     "symbol": Symbol.SOLUSD,
-        #     "state": StrategyState.ACTIVE,
-        #     "check_interval": 5,
-        #     "config": {
-        #         "current_position": "5.000937",  # Your existing position
-        #         "entry_price": "241.02",        # Approximate entry price
-        #         "take_profit_price": "242.50",  # About 3.85% gain target
-        #         "stop_loss_price": "231.50"     # About 0.85% risk
-        #         # Risk: $10.00 ((233.50 - 231.50) * 5.000937)
-        #         # Reward: $45.00 ((242.50 - 233.50) * 5.000937)
-        #         # 4.5:1 reward-to-risk ratio
-        #     }
-        # },
-        # {
-        #     "name": "DOGE BB Pullback Strategy 12/1/24",
-        #     "type": StrategyType.RANGE,
-        #     "symbol": Symbol.DOGEUSD,
-        #     "state": StrategyState.ACTIVE,
-        #     "check_interval": 5,
-        #     "config": {
-        #         "support_price": "0.43700",    # Strong support from order book
-        #         "resistance_price": "0.44500",  # Recent resistance level
-        #         "amount": "2500",              # Keep same position size
-        #         "stop_loss_price": "0.43200"   # Below current consolidation
-        #         # Risk: $12.50 ((0.43700 - 0.43200) * 2500)
-        #         # Reward: $20.00 ((0.44500 - 0.43700) * 2500)
-        #         # Improved Reward-to-Risk Ratio: 1.6:1
-        #     }
-        # }, failed
-        # {
-        #     "name": "DOGE BB Breakout Strategy 12/1/24",
-        #     "type": StrategyType.BREAKOUT,
-        #     "symbol": Symbol.DOGEUSD,
-        #     "state": StrategyState.ACTIVE,
-        #     "check_interval": 3,
-        #     "config": {
-        #         "breakout_price": "0.46100",   # Breakout confirmation
-        #         "stop_loss_price": "0.45500",  # Below middle BB
-        #         "amount": "1000",              # Position size
-        #         "take_profit_1": "0.46800",    # First target
-        #         "take_profit_2": "0.47000"     # Extended target
-        #         # Risk: $30 ((0.46100 - 0.45500) * 5000)
-        #         # Reward T1: $35 ((0.46800 - 0.46100) * 5000)
-        #         # Reward T2: $45 ((0.47000 - 0.46100) * 5000)
-        #         # Average Reward-to-Risk: 1.33:1
-        #     }
-        # }, failed 
-        # {
-        #     "name": "XRP BB Bounce Strategy 12/1/24",
-        #     "type": StrategyType.RANGE,
-        #     "symbol": Symbol.XRPUSD,
-        #     "state": StrategyState.ACTIVE,
-        #     "check_interval": 5,
-        #     "config": {
-        #         "support_price": "2.2838",    # Middle BB as strong support
-        #         "resistance_price": "2.4200", # Near upper BB resistance
-        #         "amount": "250",             # Position size
-        #         "stop_loss_price": "2.2600"  # Below middle BB
-        #     } success
-        # },
-        # {
-        #     "name": "XRP BB Breakout Strategy take 2 12/1/24",
-        #     "type": StrategyType.BREAKOUT,
-        #     "symbol": Symbol.XRPUSD,
-        #     "state": StrategyState.ACTIVE,
-        #     "check_interval": 3,
-        #     "config": {
-        #         "breakout_price": "2.4200",   # Entry above current consolidation
-        #         "stop_loss_price": "2.3600",  # Middle BB as strong support
-        #         "amount": "250",              # Position size
-        #         "take_profit_1": "2.475",    # First target at resistance cluster
-        #         "take_profit_2": "2.535"     # Extended target with momentum
-        #     }
-        # } failed
+        {
+            "name": "SOL BB Bullish Breakout 12/4/23",
+            "type": StrategyType.BREAKOUT,
+            "symbol": Symbol.SOLUSD,
+            "state": StrategyState.ACTIVE,
+            "check_interval": 3,
+            "config": {
+                "breakout_price": "236.26",    # Middle BB breakout level
+                "stop_loss": "230.00",         # Below middle BB
+                "amount": "5",                 # Position size
+                "take_profit_1": "245.06",     # Upper BB target
+                "take_profit_2": "250.00"      # Extended target on strong momentum
+                # Risk: $31.30 ((236.26 - 230.00) * 5)
+                # Reward T1: $44.00 ((245.06 - 236.26) * 5)
+                # Reward T2: $68.70 ((250.00 - 236.26) * 5)
+                # Average Reward-to-Risk ratio: ~1.8:1
+            }
+        },
         {
             "name": "SOL Bullish Breakout Strategy 12/3/24 v2",
             "type": StrategyType.BREAKOUT,
