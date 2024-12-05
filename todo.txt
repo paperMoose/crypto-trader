@@ -224,3 +224,28 @@ Dec 03 15:50:33 gemini-trading-bot app/worker.1            ~~~~^^^^^^^^
 Dec 03 15:50:33 gemini-trading-bot app/worker.1 KeyError: 'last'
 
 Figure out why this is happening.
+
+ec 04 17:07:54 gemini-trading-bot app/worker.1 INFO:OrderService:Placing sell order for 2000 at $2.2769999999999997
+Dec 04 17:07:54 gemini-trading-bot app/worker.1 ERROR:trader.gemini.decorators:Final attempt failed for place_order: Gemini API Error: Invalid price for symbol XRPUSD: 2.2769999999999997 (Reason: InvalidPrice) Response: result='error' reason='InvalidPrice' message='Invalid price for symbol XRPUSD: 2.2769999999999997'
+Dec 04 17:07:54 gemini-trading-bot app/worker.1 ERROR:OrderService:Gemini API error placing order: Gemini API Error: Invalid price for symbol XRPUSD: 2.2769999999999997 (Reason: InvalidPrice)
+Dec 04 17:07:54 gemini-trading-bot app/worker.1 ERROR:StrategyService:Error in strategy XRP BB Take Profit Strategy take 3 12/4/24: Gemini API Error: Invalid price for symbol XRPUSD: 2.2769999999999997 (Reason: InvalidPrice)
+Dec 04 17:07:54 gemini-trading-bot app/worker.1 Traceback (most recent call last):
+Dec 04 17:07:54 gemini-trading-bot app/worker.1   File "/app/trader/strategies.py", line 228, in execute
+Dec 04 17:07:54 gemini-trading-bot app/worker.1     await service.execute_stop_loss(
+Dec 04 17:07:54 gemini-trading-bot app/worker.1   File "/app/trader/services.py", line 210, in execute_stop_loss
+Dec 04 17:07:54 gemini-trading-bot app/worker.1     order = await self.order_service.place_order(
+Dec 04 17:07:54 gemini-trading-bot app/worker.1             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Dec 04 17:07:54 gemini-trading-bot app/worker.1   File "/app/trader/services.py", line 37, in place_order
+Dec 04 17:07:54 gemini-trading-bot app/worker.1     response = await self.client.place_order(
+Dec 04 17:07:54 gemini-trading-bot app/worker.1                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Dec 04 17:07:54 gemini-trading-bot app/worker.1   File "/app/trader/gemini/decorators.py", line 63, in wrapper
+Dec 04 17:07:54 gemini-trading-bot app/worker.1     response = await func(*args, **kwargs)
+Dec 04 17:07:54 gemini-trading-bot app/worker.1                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Dec 04 17:07:54 gemini-trading-bot app/worker.1   File "/app/trader/gemini/client.py", line 90, in place_order
+Dec 04 17:07:54 gemini-trading-bot app/worker.1     return parse_response(response, OrderResponse)
+Dec 04 17:07:54 gemini-trading-bot app/worker.1            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Dec 04 17:07:54 gemini-trading-bot app/worker.1   File "/app/trader/gemini/schemas.py", line 108, in parse_response
+Dec 04 17:07:54 gemini-trading-bot app/worker.1     raise GeminiAPIError(error_response)
+Dec 04 17:07:54 gemini-trading-bot app/worker.1 trader.gemini.schemas.GeminiAPIError: Gemini API Error: Invalid price for symbol XRPUSD: 2.2769999999999997 (Reason: InvalidPrice)
+Dec 04 17:07:54 gemini-trading-bot app/worker.1 INFO:StrategyService:Strategy XRP BB Take Profit Strategy take 3 12/4/24 state changed to failed
+Dec 04 17:07:54 gemini-trading-bot app/worker.1 INFO:StrategyManager:Strategy execution completed: XRP BB Take Profit Strategy take 3 12/4/24
